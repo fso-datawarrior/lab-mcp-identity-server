@@ -4,7 +4,6 @@
 
 ## Now (M1)
 
-- [ ] **L3-M1-01** Scaffold repo (this prompt)
 - [ ] **L3-M1-02** MCP stdio server + `get_user`
 - [ ] **L3-M1-03** Okta client
 - [ ] **L3-M1-04** Hash-chained audit module
@@ -24,4 +23,4 @@
 
 ## Done
 
-_(empty for now)_
+- [x] **L3-M1-01** Scaffold repo
