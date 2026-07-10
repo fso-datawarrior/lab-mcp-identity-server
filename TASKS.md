@@ -6,7 +6,6 @@
 
 - [ ] **L3-M1-02** MCP stdio server + `get_user`
 - [ ] **L3-M1-03** Okta client
-- [ ] **L3-M1-04** Hash-chained audit module
 - [ ] **L3-M1-05** Mock-Okta mode + hostile-display-name test
 - [ ] **L3-M1-06** Seed-demo script
 
@@ -24,3 +23,4 @@
 ## Done
 
 - [x] **L3-M1-01** Scaffold repo
+- [x] **L3-M1-04** Hash-chained audit module
