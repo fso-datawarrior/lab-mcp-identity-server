@@ -1,0 +1,7 @@
+node_modules
+dist
+.env
+*.log
+data/audit.jsonl
+data/pending/
+.DS_Store
