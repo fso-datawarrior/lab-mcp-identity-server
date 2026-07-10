@@ -9,9 +9,6 @@
 
 ## Next (M2)
 
-- [ ] **L3-M2-01** `provision_user` + `grant_access`
-- [ ] **L3-M2-02** Protected-group guard
-
 ## Later (M3-M5)
 
 - [ ] **L3-M3-01** Out-of-band gate + durable pending state
@@ -24,3 +21,5 @@
 - [x] **L3-M1-02** MCP stdio server + `get_user`
 - [x] **L3-M1-04** Hash-chained audit module
 - [x] **L3-M1-05** Mock-Okta mode + hostile-display-name test
+- [x] **L3-M2-01** `provision_user` + `grant_access`
+- [x] **L3-M2-02** Protected-group guard

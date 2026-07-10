@@ -8,4 +8,12 @@ export interface OktaUser {
 
 export interface OktaClient {
   getUser(userId: string): Promise<OktaUser | null>;
+  provisionUser(profile: {
+    login: string;
+    displayName: string;
+  }): Promise<OktaUser>;
+  addUserToGroup(
+    userId: string,
+    group: string,
+  ): Promise<{ added: boolean }>;
 }

@@ -28,6 +28,13 @@ const DEFAULT_SEED: OktaUser[] = [
   },
 ];
 
+function slugLogin(login: string): string {
+  return login
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 /**
  * In-memory OktaClient for zero-credential local runs and tests.
  */
@@ -44,6 +51,37 @@ export function createMockOktaClient(seed?: OktaUser[]): OktaClient {
         return null;
       }
       return { ...found, groups: [...found.groups] };
+    },
+
+    async provisionUser(profile: {
+      login: string;
+      displayName: string;
+    }): Promise<OktaUser> {
+      const id = "user-" + slugLogin(profile.login);
+      const created: OktaUser = {
+        id,
+        status: "STAGED",
+        login: profile.login,
+        displayName: profile.displayName,
+        groups: [],
+      };
+      users.set(id, created);
+      return { ...created, groups: [] };
+    },
+
+    async addUserToGroup(
+      userId: string,
+      group: string,
+    ): Promise<{ added: boolean }> {
+      const user = users.get(userId);
+      if (!user) {
+        throw new Error("user not found");
+      }
+      if (user.groups.includes(group)) {
+        return { added: false };
+      }
+      user.groups.push(group);
+      return { added: true };
     },
   };
 }
