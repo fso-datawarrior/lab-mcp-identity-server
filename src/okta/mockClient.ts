@@ -83,5 +83,33 @@ export function createMockOktaClient(seed?: OktaUser[]): OktaClient {
       user.groups.push(group);
       return { added: true };
     },
+
+    async removeUserFromGroup(
+      userId: string,
+      group: string,
+    ): Promise<{ removed: boolean }> {
+      const user = users.get(userId);
+      if (!user) {
+        throw new Error("user not found");
+      }
+      const idx = user.groups.indexOf(group);
+      if (idx === -1) {
+        return { removed: false };
+      }
+      user.groups.splice(idx, 1);
+      return { removed: true };
+    },
+
+    async deactivateUser(userId: string): Promise<{ deactivated: boolean }> {
+      const user = users.get(userId);
+      if (!user) {
+        throw new Error("user not found");
+      }
+      if (user.status === "DEACTIVATED") {
+        return { deactivated: false };
+      }
+      user.status = "DEACTIVATED";
+      return { deactivated: true };
+    },
   };
 }

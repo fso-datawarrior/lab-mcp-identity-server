@@ -16,4 +16,9 @@ export interface OktaClient {
     userId: string,
     group: string,
   ): Promise<{ added: boolean }>;
+  removeUserFromGroup(
+    userId: string,
+    group: string,
+  ): Promise<{ removed: boolean }>;
+  deactivateUser(userId: string): Promise<{ deactivated: boolean }>;
 }

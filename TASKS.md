@@ -11,7 +11,6 @@
 
 ## Later (M3-M5)
 
-- [ ] **L3-M3-01** Out-of-band gate + durable pending state
 - [ ] **L3-M4-01** Lab 1 cascade
 - [ ] **L3-M5-01** Hardening + pentest + asqav score
 
@@ -23,3 +22,4 @@
 - [x] **L3-M1-05** Mock-Okta mode + hostile-display-name test
 - [x] **L3-M2-01** `provision_user` + `grant_access`
 - [x] **L3-M2-02** Protected-group guard
+- [x] **L3-M3-01** Out-of-band gate + durable pending state
