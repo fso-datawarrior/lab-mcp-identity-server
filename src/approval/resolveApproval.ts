@@ -17,6 +17,7 @@ export type ResolveApprovalParams = {
   expectedCredential: string;
   now: string;
   client: OktaClient;
+  signingKey?: string;
 };
 
 type AuditedDecision = "approved" | "denied" | "drift-failed" | "expired";
@@ -131,7 +132,7 @@ export async function resolveApproval(
             : fingerprintCredential(params.approverCredential),
         oktaSummary,
       },
-      { now: params.now },
+      { now: params.now, signingKey: params.signingKey },
     );
   }
 

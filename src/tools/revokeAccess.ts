@@ -8,6 +8,7 @@ export type RevokeAccessDeps = {
   principal: string;
   now?: string;
   ttlSeconds?: number;
+  signingKey?: string;
 };
 
 export type RevokeAccessArgs = {
@@ -58,7 +59,7 @@ export async function handleRevokeAccess(
       approverCredential: null,
       oktaSummary: "revoke pending approval for group " + args.group,
     },
-    deps.now !== undefined ? { now: deps.now } : undefined,
+    { now: deps.now, signingKey: deps.signingKey },
   );
 
   return { status: "pending", requestId: pending.requestId };

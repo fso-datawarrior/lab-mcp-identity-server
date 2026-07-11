@@ -8,6 +8,7 @@ export type DeactivateUserDeps = {
   principal: string;
   now?: string;
   ttlSeconds?: number;
+  signingKey?: string;
 };
 
 export type DeactivateUserArgs = {
@@ -57,7 +58,7 @@ export async function handleDeactivateUser(
       approverCredential: null,
       oktaSummary: "deactivate pending approval for " + args.userId,
     },
-    deps.now !== undefined ? { now: deps.now } : undefined,
+    { now: deps.now, signingKey: deps.signingKey },
   );
 
   return { status: "pending", requestId: pending.requestId };

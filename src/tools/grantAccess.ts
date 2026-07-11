@@ -8,6 +8,7 @@ export type GrantAccessDeps = {
   actorFingerprint: string;
   principal: string;
   now?: string;
+  signingKey?: string;
 };
 
 export type GrantAccessArgs = {
@@ -30,7 +31,7 @@ export async function handleGrantAccess(
 ): Promise<GrantAccessResult> {
   const timestamp = deps.now ?? new Date().toISOString();
   const tier = classifyGrantTier(args.group);
-  const auditOpts = deps.now !== undefined ? { now: deps.now } : undefined;
+  const auditOpts = { now: deps.now, signingKey: deps.signingKey };
 
   if (tier === 3) {
     await appendAudit(

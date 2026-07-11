@@ -8,6 +8,7 @@ export type ProvisionUserDeps = {
   actorFingerprint: string;
   principal: string;
   now?: string;
+  signingKey?: string;
 };
 
 export type ProvisionUserArgs = {
@@ -49,7 +50,7 @@ export async function handleProvisionUser(
       approverCredential: null,
       oktaSummary: "provisioned STAGED user " + created.id,
     },
-    deps.now !== undefined ? { now: deps.now } : undefined,
+    { now: deps.now, signingKey: deps.signingKey },
   );
 
   return { provisioned: true, user: sanitizeUser(created) };

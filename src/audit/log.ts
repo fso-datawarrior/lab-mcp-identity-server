@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import {
   access,
   appendFile,
@@ -15,11 +15,12 @@ export const DEFAULT_AUDIT_PATH = "data/audit.jsonl";
 /** Genesis prevHash for the first entry in a chain (64 zero hex chars). */
 export const GENESIS_HASH = "0".repeat(64);
 
-export type AuditEntryWithoutHash = Omit<AuditEntry, "entryHash">;
+/** Payload hashed into entryHash (excludes entryHash and optional sig). */
+export type AuditEntryWithoutHash = Omit<AuditEntry, "entryHash" | "sig">;
 
 export type AppendAuditPartial = Omit<
   AuditEntry,
-  "timestamp" | "prevHash" | "entryHash" | "args"
+  "timestamp" | "prevHash" | "entryHash" | "sig" | "args"
 > & {
   timestamp: string;
   args: Record<string, unknown>;
@@ -28,6 +29,17 @@ export type AppendAuditPartial = Omit<
 export type AppendAuditOpts = {
   /** Override wall-clock time; when set, used as the entry timestamp. */
   now?: string;
+  /**
+   * Optional HMAC key. When set, each entry gets sig = HMAC-SHA256(key, entryHash).
+   * Defends against an offline editor who can recompute the hash chain but lacks
+   * the key. The running process holds the key, so this does not defend against
+   * a compromised server process. Single key, no rotation (demo).
+   */
+  signingKey?: string;
+};
+
+export type VerifyChainOpts = {
+  signingKey?: string;
 };
 
 export type VerifyChainResult = {
@@ -59,11 +71,16 @@ function sortKeys(value: unknown): unknown {
 }
 
 /**
- * SHA-256 hex digest over canonical JSON of the entry excluding entryHash.
+ * SHA-256 hex digest over canonical JSON of the entry excluding entryHash and sig.
  * prevHash is included in the hashed payload.
  */
 export function computeEntryHash(entryWithoutHash: AuditEntryWithoutHash): string {
   return createHash("sha256").update(canonicalJson(entryWithoutHash)).digest("hex");
+}
+
+/** HMAC-SHA256 hex over entryHash. Never log or persist the key. */
+export function signEntryHash(signingKey: string, entryHash: string): string {
+  return createHmac("sha256", signingKey).update(entryHash).digest("hex");
 }
 
 async function fileExists(filePath: string): Promise<boolean> {
@@ -91,6 +108,7 @@ async function readLastEntryHash(filePath: string): Promise<string> {
 /**
  * Append one hash-chained audit entry as a JSONL line.
  * Caller must supply timestamp, actorFingerprint, and principal for determinism.
+ * When opts.signingKey is set, also attach an HMAC signature over entryHash.
  */
 export async function appendAudit(
   filePath: string,
@@ -110,6 +128,9 @@ export async function appendAudit(
 
   const entryHash = computeEntryHash(withoutHash);
   const entry: AuditEntry = { ...withoutHash, entryHash };
+  if (opts?.signingKey) {
+    entry.sig = signEntryHash(opts.signingKey, entryHash);
+  }
 
   await mkdir(dirname(filePath), { recursive: true });
   await appendFile(filePath, `${JSON.stringify(entry)}\n`, "utf8");
@@ -119,8 +140,13 @@ export async function appendAudit(
 
 /**
  * Recompute hashes and verify the prevHash chain for every line in the file.
+ * When opts.signingKey is set, also require and verify each entry's HMAC sig.
+ * Without a signingKey, any sig fields are ignored (hash-only, backward compatible).
  */
-export async function verifyChain(filePath: string): Promise<VerifyChainResult> {
+export async function verifyChain(
+  filePath: string,
+  opts?: VerifyChainOpts,
+): Promise<VerifyChainResult> {
   if (!(await fileExists(filePath))) {
     return { ok: true };
   }
@@ -151,7 +177,7 @@ export async function verifyChain(filePath: string): Promise<VerifyChainResult> 
       };
     }
 
-    const { entryHash: storedHash, ...withoutHash } = entry;
+    const { entryHash: storedHash, sig: storedSig, ...withoutHash } = entry;
     const recomputed = computeEntryHash(withoutHash);
     if (recomputed !== storedHash) {
       return {
@@ -159,6 +185,24 @@ export async function verifyChain(filePath: string): Promise<VerifyChainResult> 
         brokenAtLine: lineNumber,
         reason: "entryHash mismatch",
       };
+    }
+
+    if (opts?.signingKey) {
+      if (storedSig === undefined || storedSig === "") {
+        return {
+          ok: false,
+          brokenAtLine: lineNumber,
+          reason: "missing signature",
+        };
+      }
+      const expectedSig = signEntryHash(opts.signingKey, storedHash);
+      if (storedSig !== expectedSig) {
+        return {
+          ok: false,
+          brokenAtLine: lineNumber,
+          reason: "signature mismatch",
+        };
+      }
     }
 
     expectedPrev = storedHash;

@@ -7,6 +7,7 @@ import { createMockOktaClient } from "../okta/mockClient.js";
  * Out-of-band approval CLI. Not an MCP tool.
  * Usage: resolve.ts <approve|deny> <requestId>
  * Credential: process.env.APPROVAL_SECRET
+ * Optional audit HMAC: process.env.LAB3_AUDIT_HMAC_KEY
  */
 async function main(): Promise<void> {
   const decisionArg = process.argv[2];
@@ -27,6 +28,8 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  const signingKey = process.env.LAB3_AUDIT_HMAC_KEY || undefined;
+
   const result = await resolveApproval({
     dir: DEFAULT_PENDING_DIR,
     auditPath: DEFAULT_AUDIT_PATH,
@@ -36,6 +39,7 @@ async function main(): Promise<void> {
     expectedCredential: secret,
     now: new Date().toISOString(),
     client: createMockOktaClient(),
+    signingKey,
   });
 
   console.log(JSON.stringify(result));

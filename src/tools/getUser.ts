@@ -8,6 +8,7 @@ export type GetUserDeps = {
   actorFingerprint: string;
   principal: string;
   now?: string;
+  signingKey?: string;
 };
 
 export type GetUserArgs = {
@@ -44,7 +45,7 @@ export async function handleGetUser(
         approverCredential: null,
         oktaSummary: "user not found",
       },
-      deps.now !== undefined ? { now: deps.now } : undefined,
+      { now: deps.now, signingKey: deps.signingKey },
     );
     return { found: false };
   }
@@ -64,7 +65,7 @@ export async function handleGetUser(
       approverCredential: null,
       oktaSummary: "read user " + user.id,
     },
-    deps.now !== undefined ? { now: deps.now } : undefined,
+    { now: deps.now, signingKey: deps.signingKey },
   );
 
   return { found: true, user: sanitizeUser(user) };

@@ -23,6 +23,7 @@ export type ServerDeps = {
   actorFingerprint: string;
   principal: string;
   ttlSeconds?: number;
+  signingKey?: string;
 };
 
 /**
@@ -34,6 +35,7 @@ export function createServer(deps: ServerDeps): McpServer {
     version: "0.1.0",
   });
 
+  const signingKey = deps.signingKey ?? process.env.LAB3_AUDIT_HMAC_KEY;
   const toolDeps = {
     client: deps.client,
     auditPath: deps.auditPath,
@@ -41,6 +43,7 @@ export function createServer(deps: ServerDeps): McpServer {
     actorFingerprint: deps.actorFingerprint,
     principal: deps.principal,
     ttlSeconds: deps.ttlSeconds,
+    signingKey: signingKey || undefined,
   };
 
   server.registerTool(

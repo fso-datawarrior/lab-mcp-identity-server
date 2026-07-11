@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   appendAudit,
+  computeEntryHash,
   GENESIS_HASH,
   verifyChain,
   type AppendAuditPartial,
@@ -130,5 +131,86 @@ describe("audit", () => {
     );
     expect(entry.args.token).toBe("[REDACTED]");
     expect(entry.args.login).toBe("user@example.com");
+  });
+
+  it("with signingKey, entries include sig and verifyChain with key returns ok", async () => {
+    const key = "test-hmac-key";
+    const entry = await appendAudit(
+      logPath,
+      basePartial({ timestamp: "2026-01-01T00:00:00.000Z" }),
+      { signingKey: key },
+    );
+    expect(entry.sig).toBeTruthy();
+    expect(typeof entry.sig).toBe("string");
+    expect(entry.sig!.length).toBeGreaterThan(0);
+
+    await appendAudit(
+      logPath,
+      basePartial({ timestamp: "2026-01-01T00:00:01.000Z" }),
+      { signingKey: key },
+    );
+
+    expect(await verifyChain(logPath, { signingKey: key })).toEqual({ ok: true });
+  });
+
+  it("recomputed hash chain still fails signature check when sig is stale", async () => {
+    const key = "test-hmac-key";
+    await appendAudit(
+      logPath,
+      basePartial({ timestamp: "2026-01-01T00:00:00.000Z" }),
+      { signingKey: key },
+    );
+    await appendAudit(
+      logPath,
+      basePartial({ timestamp: "2026-01-01T00:00:01.000Z" }),
+      { signingKey: key },
+    );
+    await appendAudit(
+      logPath,
+      basePartial({ timestamp: "2026-01-01T00:00:02.000Z" }),
+      { signingKey: key },
+    );
+
+    const content = await readFile(logPath, "utf8");
+    const lines = content.split("\n").filter((line) => line.length > 0);
+    const entries = lines.map((line) => JSON.parse(line) as AuditEntry);
+    entries[1].tool = "tampered_tool";
+
+    let prev = GENESIS_HASH;
+    for (let i = 0; i < entries.length; i++) {
+      const oldSig = entries[i].sig;
+      entries[i].prevHash = prev;
+      const { entryHash: _h, sig: _s, ...payload } = entries[i];
+      entries[i].entryHash = computeEntryHash(payload);
+      entries[i].sig = oldSig;
+      prev = entries[i].entryHash;
+    }
+
+    await writeFile(
+      logPath,
+      entries.map((e) => JSON.stringify(e)).join("\n") + "\n",
+      "utf8",
+    );
+
+    expect(await verifyChain(logPath)).toEqual({ ok: true });
+
+    const signed = await verifyChain(logPath, { signingKey: key });
+    expect(signed.ok).toBe(false);
+    expect(signed.brokenAtLine).toBe(2);
+    expect(signed.reason).toBe("signature mismatch");
+  });
+
+  it("verifyChain without signingKey ignores sig (hash-only, backward compatible)", async () => {
+    const key = "test-hmac-key";
+    await appendAudit(logPath, basePartial(), { signingKey: key });
+    expect(await verifyChain(logPath)).toEqual({ ok: true });
+  });
+
+  it("unsigned file verified with signingKey fails with missing signature", async () => {
+    await appendAudit(logPath, basePartial());
+    const result = await verifyChain(logPath, { signingKey: "test-hmac-key" });
+    expect(result.ok).toBe(false);
+    expect(result.brokenAtLine).toBe(1);
+    expect(result.reason).toBe("missing signature");
   });
 });
