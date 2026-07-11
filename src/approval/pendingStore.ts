@@ -7,6 +7,7 @@ export const DEFAULT_PENDING_DIR = "data/pending";
 
 export type PendingStatus =
   | "pending"
+  | "approving"
   | "approved"
   | "denied"
   | "expired"
@@ -135,6 +136,7 @@ export async function getPending(
 
 /**
  * List all requests currently in status "pending".
+ * "approving" limbo requests are excluded (they need reconciliation, not listing).
  */
 export async function listPending(dir: string): Promise<PendingRequest[]> {
   try {
@@ -160,6 +162,13 @@ export async function listPending(dir: string): Promise<PendingRequest[]> {
 /**
  * Resolve a pending request out of band. Fail closed on expiry, drift,
  * wrong credential, and already-resolved. Executor runs at most once.
+ *
+ * At-most-once across a crash: on approve, after the precondition passes we
+ * persist status "approving" BEFORE running the executor. If the process dies
+ * mid-executor, the request stays in "approving" limbo. A retry then hits the
+ * already-resolved guard (status !== "pending") and returns
+ * "already resolved: approving" without re-running the executor. A human must
+ * reconcile limbo requests; they are never auto-retried.
  */
 export async function resolvePending(
   params: ResolvePendingParams,
@@ -205,6 +214,10 @@ export async function resolvePending(
       };
     }
   }
+
+  // Persist "approving" before the side effect so a crash cannot re-execute.
+  request.status = "approving";
+  await writeRequest(params.dir, request);
 
   if (params.executor) {
     await params.executor();

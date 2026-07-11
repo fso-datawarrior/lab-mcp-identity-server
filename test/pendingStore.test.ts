@@ -242,4 +242,70 @@ describe("pendingStore", () => {
     expect(calls).toBe(1);
     expect((await getPending(dir, requestId))?.status).toBe("approved");
   });
+
+  it("normal approve still ends approved with executor called once", async () => {
+    const created = await createPending(dir, baseInput, {
+      now: "2026-03-01T00:00:00.000Z",
+    });
+    let calls = 0;
+
+    const result = await resolvePending({
+      dir,
+      requestId: created.requestId,
+      decision: "approve",
+      approverCredential: EXPECTED,
+      expectedCredential: EXPECTED,
+      now: "2026-03-01T00:01:00.000Z",
+      executor: async () => {
+        calls += 1;
+      },
+    });
+
+    expect(result).toEqual({ resolved: true, status: "approved" });
+    expect(calls).toBe(1);
+    expect((await getPending(dir, created.requestId))?.status).toBe("approved");
+  });
+
+  it("executor throw leaves approving limbo and blocks re-execution", async () => {
+    const created = await createPending(dir, baseInput, {
+      now: "2026-03-01T00:00:00.000Z",
+    });
+    let calls = 0;
+
+    await expect(
+      resolvePending({
+        dir,
+        requestId: created.requestId,
+        decision: "approve",
+        approverCredential: EXPECTED,
+        expectedCredential: EXPECTED,
+        now: "2026-03-01T00:01:00.000Z",
+        executor: async () => {
+          calls += 1;
+          throw new Error("executor crashed");
+        },
+      }),
+    ).rejects.toThrow("executor crashed");
+
+    expect(calls).toBe(1);
+    expect((await getPending(dir, created.requestId))?.status).toBe("approving");
+
+    const retry = await resolvePending({
+      dir,
+      requestId: created.requestId,
+      decision: "approve",
+      approverCredential: EXPECTED,
+      expectedCredential: EXPECTED,
+      now: "2026-03-01T00:02:00.000Z",
+      executor: async () => {
+        calls += 1;
+      },
+    });
+
+    expect(retry).toEqual({
+      resolved: false,
+      reason: "already resolved: approving",
+    });
+    expect(calls).toBe(1);
+  });
 });

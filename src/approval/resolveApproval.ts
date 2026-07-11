@@ -19,12 +19,18 @@ export type ResolveApprovalParams = {
   client: OktaClient;
 };
 
-const AUDITED_STATUSES: ReadonlySet<PendingStatus> = new Set([
+type AuditedDecision = "approved" | "denied" | "drift-failed" | "expired";
+
+const AUDITED_STATUSES: ReadonlySet<AuditedDecision> = new Set([
   "approved",
   "denied",
   "drift-failed",
   "expired",
 ]);
+
+function isAuditedDecision(status: PendingStatus): status is AuditedDecision {
+  return AUDITED_STATUSES.has(status as AuditedDecision);
+}
 
 /** SHA-256 hex fingerprint of the approver credential (never the raw secret). */
 export function fingerprintCredential(credential: string): string {
@@ -90,17 +96,18 @@ export async function resolveApproval(
     executor,
   });
 
-  if (result.status && AUDITED_STATUSES.has(result.status)) {
+  if (result.status && isAuditedDecision(result.status)) {
+    const decision: AuditedDecision = result.status;
     let oktaSummary: string;
-    if (result.status === "approved") {
+    if (decision === "approved") {
       oktaSummary =
         "approved and executed: " +
         request.tool +
         " on " +
         request.targetUser;
-    } else if (result.status === "denied") {
+    } else if (decision === "denied") {
       oktaSummary = "denied by approver";
-    } else if (result.status === "drift-failed") {
+    } else if (decision === "drift-failed") {
       oktaSummary = "precondition drift: " + (result.reason ?? "");
     } else {
       oktaSummary = "expired before approval";
@@ -117,9 +124,9 @@ export async function resolveApproval(
         targetUser: request.targetUser,
         args: request.args,
         justification: request.justification,
-        decision: result.status,
+        decision,
         approverCredential:
-          result.status === "expired"
+          decision === "expired"
             ? null
             : fingerprintCredential(params.approverCredential),
         oktaSummary,
