@@ -22,6 +22,7 @@ Demonstration only. Run against your own Okta Integrator org with the lab3 demo 
    ```
 
 4. Optional: set `LAB3_PRINCIPAL` in `.env` if you want a custom audit principal (default: `claude-desktop`).
+5. Optional: set `LAB3_APPROVAL_TTL_SECONDS` (e.g. `900`) so pending requests survive screenshot time during live demos (default: 300).
 
 ## 1. Claude Desktop registration
 
@@ -164,12 +165,7 @@ All 5 steps should PASS.
 2. Verify the hash chain **with HMAC signing** (requires `LAB3_AUDIT_HMAC_KEY` in env):
 
    ```bash
-   node --env-file=.env -e "
-   import { verifyChain } from './dist/audit/log.js';
-   const key = process.env.LAB3_AUDIT_HMAC_KEY;
-   const r = await verifyChain('data/audit.jsonl', { signingKey: key });
-   console.log(JSON.stringify(r));
-   "
+   node --env-file=.env --input-type=module -e "const { verifyChain } = await import('./dist/audit/log.js'); const r = await verifyChain('data/audit.jsonl', { signingKey: process.env.LAB3_AUDIT_HMAC_KEY }); console.log(JSON.stringify(r));"
    ```
 
    **Expected:** `{ "ok": true }`

@@ -1,6 +1,7 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { DEFAULT_AUDIT_PATH } from "./audit/log.js";
 import { DEFAULT_PENDING_DIR } from "./approval/pendingStore.js";
+import { readApprovalTtlSeconds } from "./config/approvalTtl.js";
 import { deriveActorFingerprint } from "./identity/actor.js";
 import { getOktaClient } from "./okta/factory.js";
 import { createServer } from "./server.js";
@@ -23,6 +24,7 @@ async function main(): Promise<void> {
     principal,
     signingKey,
     allowedGroupId,
+    ttlSeconds: readApprovalTtlSeconds(),
   });
 
   const transport = new StdioServerTransport();
