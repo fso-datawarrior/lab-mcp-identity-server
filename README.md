@@ -21,6 +21,28 @@ An approved revoke in this lab removes an Okta group membership. That membership
 
 **Current milestone: M1 (tool surface scaffold).**
 
+## Live demo setup
+
+This demonstration can run against your own Okta Integrator org. You need:
+
+1. An Okta Integrator org with a scoped OAuth service app (private key JWT, with `kid` if your app has multiple keys).
+2. A `.env` file at the repo root, copied from [`.env.example`](./.env.example). Set at minimum: `OKTA_ORG_URL`, `OKTA_OAUTH_CLIENT_ID`, `OKTA_OAUTH_PRIVATE_KEY_PATH`, `OKTA_SCOPES`, `OKTA_DEMO_GROUP_ID`, `LAB3_DEMO_PREFIX`, and `OKTA_CLIENT_MODE=real`.
+3. Scopes broad enough to seed and verify the fixture (typically `okta.users.read`, `okta.users.manage`, and `okta.groups.manage`).
+
+Create or refresh the demo objects (idempotent; safe to re-run):
+
+```bash
+pnpm seed:demo
+```
+
+Verify the live org matches the expected fixture:
+
+```bash
+pnpm smoke:okta
+```
+
+If `seed:demo` reports a group id that differs from `OKTA_DEMO_GROUP_ID`, update that variable in `.env` and re-run `pnpm smoke:okta`.
+
 ## License
 
 MIT. See [LICENSE](./LICENSE).

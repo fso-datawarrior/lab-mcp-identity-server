@@ -16,6 +16,7 @@
     "start": "node dist/index.js",
     "test": "vitest run",
     "smoke:okta": "tsx --env-file=.env scripts/smoke-okta.ts",
+    "seed:demo": "tsx --env-file=.env scripts/seed-demo.ts",
     "approve": "tsx src/cli/resolve.ts approve",
     "deny": "tsx src/cli/resolve.ts deny"
   },
