@@ -1,4 +1,7 @@
-/** Local convenience launcher: pins cwd to repo root and forces OKTA_CLIENT_MODE=real. */
+/**
+ * Claude Desktop launcher: pins cwd to the repo root so data/audit.jsonl and
+ * data/pending resolve inside the repo (same store as pnpm approve/deny).
+ */
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 

@@ -28,6 +28,8 @@ Demonstration only. Run against your own Okta Integrator org with the lab3 demo 
 
 Paste into your Claude Desktop MCP config. Replace `<ABSOLUTE_REPO_PATH>` with the full path to this repo. **No secrets** go in this JSON; they stay in `.env`.
 
+Use `scripts/start-desktop.mjs` (not `dist/index.js` directly): the launcher pins the working directory to the repo root so `data/audit.jsonl` and `data/pending` resolve inside the repo, keeping the MCP server and `pnpm approve`/`pnpm deny` on the same pending store.
+
 ```json
 {
   "mcpServers": {
@@ -35,7 +37,7 @@ Paste into your Claude Desktop MCP config. Replace `<ABSOLUTE_REPO_PATH>` with t
       "command": "node",
       "args": [
         "--env-file=<ABSOLUTE_REPO_PATH>/.env",
-        "<ABSOLUTE_REPO_PATH>/dist/index.js"
+        "<ABSOLUTE_REPO_PATH>/scripts/start-desktop.mjs"
       ],
       "env": {
         "OKTA_CLIENT_MODE": "real"
