@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { appendAudit } from "../audit/log.js";
 import type { OktaClient } from "../okta/client.js";
+import { assertDemoGroupAllowed } from "../policy/demoGroupAllowlist.js";
 import {
   getPending,
   resolvePending,
@@ -18,6 +19,7 @@ export type ResolveApprovalParams = {
   now: string;
   client: OktaClient;
   signingKey?: string;
+  allowedGroupId?: string;
 };
 
 type AuditedDecision = "approved" | "denied" | "drift-failed" | "expired";
@@ -45,6 +47,21 @@ function asString(value: unknown, field: string): string {
   return value;
 }
 
+/** Prefer groupId from new-format pending files; fall back to legacy group field. */
+function resolveStoredGroupArgs(
+  args: Record<string, unknown>,
+): { groupId: string; groupName: string } {
+  if (typeof args.groupId === "string" && args.groupId.length > 0) {
+    const groupName =
+      typeof args.groupName === "string" && args.groupName.length > 0
+        ? args.groupName
+        : args.groupId;
+    return { groupId: args.groupId, groupName };
+  }
+  const legacy = asString(args.group, "group");
+  return { groupId: legacy, groupName: legacy };
+}
+
 /**
  * Out-of-band resolution: re-check preconditions, execute at most once, audit.
  */
@@ -61,16 +78,17 @@ export async function resolveApproval(
 
   if (request.tool === "revoke_access") {
     const userId = asString(request.args.userId, "userId");
-    const group = asString(request.args.group, "group");
+    const { groupId, groupName } = resolveStoredGroupArgs(request.args);
     precondition = async () => {
       const u = await params.client.getUser(userId);
       return {
-        ok: !!u && u.groups.includes(group),
-        reason: "user no longer a member of " + group,
+        ok: !!u && u.groups.includes(groupId),
+        reason: "user no longer a member of " + groupName,
       };
     };
     executor = async () => {
-      await params.client.removeUserFromGroup(userId, group);
+      assertDemoGroupAllowed(groupId, params.allowedGroupId);
+      await params.client.removeUserFromGroup(userId, groupId);
     };
   } else if (request.tool === "deactivate_user") {
     const userId = asString(request.args.userId, "userId");

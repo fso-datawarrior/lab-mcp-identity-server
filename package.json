@@ -15,11 +15,13 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "test": "vitest run",
+    "smoke:okta": "tsx --env-file=.env scripts/smoke-okta.ts",
     "approve": "tsx src/cli/resolve.ts approve",
     "deny": "tsx src/cli/resolve.ts deny"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
+    "@okta/okta-sdk-nodejs": "^8.0.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {

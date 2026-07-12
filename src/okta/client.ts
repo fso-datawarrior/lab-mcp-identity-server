@@ -6,8 +6,11 @@ export interface OktaUser {
   groups: string[];
 }
 
+export type ResolvedGroup = { id: string; name: string };
+
 export interface OktaClient {
   getUser(userId: string): Promise<OktaUser | null>;
+  resolveGroup(nameOrId: string): Promise<ResolvedGroup | null>;
   provisionUser(profile: {
     login: string;
     displayName: string;

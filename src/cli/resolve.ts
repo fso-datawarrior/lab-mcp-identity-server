@@ -1,7 +1,7 @@
 import { DEFAULT_AUDIT_PATH } from "../audit/log.js";
 import { DEFAULT_PENDING_DIR } from "../approval/pendingStore.js";
 import { resolveApproval } from "../approval/resolveApproval.js";
-import { createMockOktaClient } from "../okta/mockClient.js";
+import { getOktaClient } from "../okta/factory.js";
 
 /**
  * Out-of-band approval CLI. Not an MCP tool.
@@ -30,6 +30,8 @@ async function main(): Promise<void> {
 
   const signingKey = process.env.LAB3_AUDIT_HMAC_KEY || undefined;
 
+  const { client, allowedGroupId } = await getOktaClient();
+
   const result = await resolveApproval({
     dir: DEFAULT_PENDING_DIR,
     auditPath: DEFAULT_AUDIT_PATH,
@@ -38,7 +40,8 @@ async function main(): Promise<void> {
     approverCredential: secret,
     expectedCredential: secret,
     now: new Date().toISOString(),
-    client: createMockOktaClient(),
+    client,
+    allowedGroupId,
     signingKey,
   });
 

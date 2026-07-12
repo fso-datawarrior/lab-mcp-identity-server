@@ -24,6 +24,8 @@ export type ServerDeps = {
   principal: string;
   ttlSeconds?: number;
   signingKey?: string;
+  /** Real-client demo group allowlist (OKTA_DEMO_GROUP_ID). */
+  allowedGroupId?: string;
 };
 
 /**
@@ -44,6 +46,7 @@ export function createServer(deps: ServerDeps): McpServer {
     principal: deps.principal,
     ttlSeconds: deps.ttlSeconds,
     signingKey: signingKey || undefined,
+    allowedGroupId: deps.allowedGroupId,
   };
 
   server.registerTool(
