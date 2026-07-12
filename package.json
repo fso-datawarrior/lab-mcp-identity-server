@@ -14,11 +14,12 @@
     "typecheck": "tsc --noEmit",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
+    "start:real": "node --env-file=.env scripts/start-real.mjs",
     "test": "vitest run",
     "smoke:okta": "tsx --env-file=.env scripts/smoke-okta.ts",
     "seed:demo": "tsx --env-file=.env scripts/seed-demo.ts",
-    "approve": "tsx src/cli/resolve.ts approve",
-    "deny": "tsx src/cli/resolve.ts deny"
+    "approve": "tsx --env-file=.env src/cli/resolve.ts approve",
+    "deny": "tsx --env-file=.env src/cli/resolve.ts deny"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
