@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { appendAudit } from "../audit/log.js";
+import { getOktaClientMode } from "../config/oktaConfig.js";
 import type { OktaClient } from "../okta/client.js";
 import { assertDemoGroupAllowed } from "../policy/demoGroupAllowlist.js";
 import {
@@ -71,6 +72,23 @@ export async function resolveApproval(
   const request = await getPending(params.dir, params.requestId);
   if (request === null) {
     return { resolved: false, reason: "not found" };
+  }
+
+  const resolverMode = getOktaClientMode();
+  if (request.clientMode && request.clientMode !== resolverMode) {
+    const reason =
+      "client mode mismatch: request created in " +
+      request.clientMode +
+      ", resolver running in " +
+      resolverMode;
+    console.error(
+      "[lab3] approval refused: " +
+        reason +
+        ". Set OKTA_CLIENT_MODE=" +
+        request.clientMode +
+        " in .env for pnpm approve/deny.",
+    );
+    return { resolved: false, reason };
   }
 
   let precondition: (() => Promise<{ ok: boolean; reason?: string }>) | undefined;

@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { access, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import {
+  getOktaClientMode,
+  type OktaClientMode,
+} from "../config/oktaConfig.js";
 
 /** Default pending-request directory (gitignored). Tests must pass a temp dir. */
 export const DEFAULT_PENDING_DIR = "data/pending";
@@ -25,6 +29,8 @@ export type PendingRequest = {
   createdAt: string;
   expiresAt: string;
   status: PendingStatus;
+  /** Okta client mode active when the request was created (optional on legacy files). */
+  clientMode?: OktaClientMode;
 };
 
 export type CreatePendingInput = {
@@ -40,6 +46,7 @@ export type CreatePendingInput = {
 export type CreatePendingOpts = {
   now: string;
   ttlSeconds?: number;
+  clientMode?: OktaClientMode;
 };
 
 export type ResolvePendingParams = {
@@ -113,6 +120,7 @@ export async function createPending(
     createdAt: opts.now,
     expiresAt: addSeconds(opts.now, ttlSeconds),
     status: "pending",
+    clientMode: opts.clientMode ?? getOktaClientMode(),
   };
   await writeRequest(dir, request);
   return request;
