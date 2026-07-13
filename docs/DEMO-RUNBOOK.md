@@ -193,3 +193,5 @@ rm -f data/pending/*.json
 Do not truncate `data/audit.jsonl` if you need evidence; copy it first. The audit log is append-only by design.
 
 **Restore fixture if interrupted:** If approve ran but grant restore did not, re-run Beat 6 or `pnpm seed:demo` (idempotent) then `pnpm smoke:okta`.
+
+**Okta eventual consistency:** Group membership reads can lag writes; `pnpm smoke:okta` retries membership checks and self-heals bob if a prior run left residue.

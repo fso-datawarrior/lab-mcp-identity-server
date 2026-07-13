@@ -10,6 +10,10 @@ const BOB_LOGIN = "lab3-demo-bob@example.com";
 
 type StepResult = { name: string; pass: boolean; detail: string };
 
+type GroupListClient = {
+  listUserGroups(userId: string): Promise<string[]>;
+};
+
 function fail(steps: StepResult[], err: unknown): never {
   const message = err instanceof Error ? err.message : String(err);
   console.error("[smoke] FATAL:", message);
@@ -29,6 +33,36 @@ function printSummary(steps: StepResult[]): void {
   }
   const allPass = steps.length > 0 && steps.every((s) => s.pass);
   console.error(allPass ? "\nOVERALL: PASS" : "\nOVERALL: FAIL");
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Poll listUserGroups until membership matches expectPresent or tries run out.
+ * Okta group membership reads are eventually consistent.
+ */
+async function waitForGroupMembership(
+  client: GroupListClient,
+  userId: string,
+  groupId: string,
+  expectPresent: boolean,
+  tries = 6,
+  delayMs = 1000,
+): Promise<string[]> {
+  let last: string[] = [];
+  for (let attempt = 1; attempt <= tries; attempt++) {
+    last = await client.listUserGroups(userId);
+    const present = last.includes(groupId);
+    if (present === expectPresent) {
+      return last;
+    }
+    if (attempt < tries) {
+      await sleep(delayMs);
+    }
+  }
+  return last;
 }
 
 async function main(): Promise<void> {
@@ -101,7 +135,12 @@ async function main(): Promise<void> {
   // Step 2: alice in demo group
   let aliceGroups: string[] = [];
   try {
-    aliceGroups = await client.listUserGroups(alice.id);
+    aliceGroups = await waitForGroupMembership(
+      client,
+      alice.id,
+      demoGroupId,
+      true,
+    );
   } catch (err: unknown) {
     fail(steps, err);
   }
@@ -120,10 +159,24 @@ async function main(): Promise<void> {
       : "OKTA_DEMO_GROUP_ID absent",
   });
 
-  // Step 3: bob NOT in demo group
+  // Step 3: bob NOT in demo group (self-healing if residue from interrupted run)
   let bobGroups: string[] = [];
+  let step3Detail = "";
   try {
     bobGroups = await client.listUserGroups(bob.id);
+    if (bobGroups.includes(demoGroupId)) {
+      console.error(
+        "[step3] bob has demo group residue; unassigning to self-heal",
+      );
+      await client.unassignUserFromGroup(demoGroupId, bob.id);
+      step3Detail = "self-healed residue; ";
+    }
+    bobGroups = await waitForGroupMembership(
+      client,
+      bob.id,
+      demoGroupId,
+      false,
+    );
   } catch (err: unknown) {
     fail(steps, err);
   }
@@ -137,33 +190,69 @@ async function main(): Promise<void> {
   steps.push({
     name: "step3-bob-not-in-demo-group",
     pass: bobNotInDemo,
-    detail: bobNotInDemo
-      ? "OKTA_DEMO_GROUP_ID absent as expected"
-      : "OKTA_DEMO_GROUP_ID unexpectedly present",
+    detail:
+      step3Detail +
+      (bobNotInDemo
+        ? "OKTA_DEMO_GROUP_ID absent as expected"
+        : "OKTA_DEMO_GROUP_ID unexpectedly present"),
   });
 
-  // Step 4: assign bob, verify, unassign, verify restored
+  // Step 4: assign bob, verify, unassign, verify restored (always cleanup in finally)
   let step4Pass = false;
   let step4Detail = "";
+  let assignAttempted = false;
+  let assignVerified = false;
   try {
     await client.assignUserToGroup(demoGroupId, bob.id);
-    const afterAssign = await client.listUserGroups(bob.id);
-    const assigned = afterAssign.includes(demoGroupId);
-    if (!assigned) {
-      step4Pass = false;
-      step4Detail = "assign succeeded but group not listed afterward";
-    } else {
-      await client.unassignUserFromGroup(demoGroupId, bob.id);
-      const afterUnassign = await client.listUserGroups(bob.id);
-      const restored = !afterUnassign.includes(demoGroupId);
-      step4Pass = restored;
-      step4Detail = restored
-        ? "assign verified, unassign restored original state"
-        : "unassign did not remove demo group";
+    assignAttempted = true;
+    const afterAssign = await waitForGroupMembership(
+      client,
+      bob.id,
+      demoGroupId,
+      true,
+    );
+    assignVerified = afterAssign.includes(demoGroupId);
+    if (!assignVerified) {
+      step4Detail = "assign succeeded but group not listed after retries";
     }
   } catch (err: unknown) {
-    step4Pass = false;
     step4Detail = err instanceof Error ? err.message : String(err);
+  } finally {
+    if (assignAttempted) {
+      try {
+        await client.unassignUserFromGroup(demoGroupId, bob.id);
+        const afterUnassign = await waitForGroupMembership(
+          client,
+          bob.id,
+          demoGroupId,
+          false,
+        );
+        const restored = !afterUnassign.includes(demoGroupId);
+        if (assignVerified && restored) {
+          step4Pass = true;
+          step4Detail = "assign verified, unassign restored original state";
+        } else if (assignVerified && !restored) {
+          step4Pass = false;
+          step4Detail = "unassign did not remove demo group after retries";
+        } else if (!assignVerified) {
+          step4Pass = false;
+          if (!step4Detail) {
+            step4Detail =
+              "assign succeeded but group not listed after retries";
+          }
+          step4Detail += restored
+            ? " (bob cleaned up)"
+            : " (bob still in demo group after cleanup)";
+        }
+      } catch (cleanupErr: unknown) {
+        step4Pass = false;
+        const msg =
+          cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr);
+        step4Detail = step4Detail
+          ? step4Detail + "; cleanup unassign failed: " + msg
+          : "cleanup unassign failed: " + msg;
+      }
+    }
   }
   console.error("[step4] " + step4Detail);
   steps.push({
