@@ -1,15 +1,13 @@
 # TASKS.md
 
 > Note: this file may be normalized later by the PMO task template. Task IDs below are stable for now.
-
-## Now (M4)
-
-- [ ] **L3-M4-01** Lab 1 cascade harness (read-only preflight + offline timeline correlator; see docs/CASCADE-RUNBOOK.md)
+> M4-c seams: AD-16 (cloudflared config.yml catch-all — resolved operationally via isolated --config) and AD-17 (correlator false-negative on lossy Lab 1 log — code-closed both sides). AD-14 remains open (L3-M4-04).
 
 ## Next (M2)
 
 ## Later (M3-M5)
 
+- [ ] **L3-M4-04** AD-14 preflight hardening: mark app-wiring UNVERIFIED and print the manual checklist when okta.apps.read is absent (deferred code fix)
 - [ ] **L3-M5-01** Least-privilege writeup
 - [ ] **L3-M5-02** go-appsec pentest
 - [ ] **L3-M5-03** BREAK-GLASS / checklist / asqav docs
@@ -33,3 +31,6 @@
 - [x] **L3-DEMO-02** Client mode stamp on pending requests + resolver mismatch refusal (82b3fb9)
 - [x] **L3-DEMO-03** Smoke test eventual consistency + bob self-heal (7103ecc)
 - [x] **L3-DEMO-live** Live end-to-end gate demo run (2026-07-13)
+- [x] **L3-M4-01** Lab 1 cascade harness: read-only preflight + offline timeline correlator (b434eea; AD-17 correlator `--scim-id` fallback 1ec9160)
+- [x] **L3-M4-02** Okta SCIM wiring: lab3-demo-group assigned to "AI Platform (Demonstration)" (0oa151n0671V7qDK9698)
+- [x] **L3-M4-03** Live two-lab cascade verified 2026-07-13: approved revoke on ACTIVE lab3-demo-carol -> SCIM PATCH active:false into Lab 1 (~2.9s, active=false confirmed); smoke:okta 5/5
