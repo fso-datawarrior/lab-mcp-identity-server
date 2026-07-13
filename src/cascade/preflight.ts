@@ -88,6 +88,10 @@ export function createReadOnlyOktaProbe(config: OktaConfig): ReadOnlyOktaProbe {
   return probe;
 }
 
+export function hasOktaAppsReadScope(scopes: string[]): boolean {
+  return scopes.includes('okta.apps.read');
+}
+
 export function printManualScimChecklist(groupName: string): void {
   console.error('');
   console.error('=== manual SCIM wiring checklist (okta.apps.read not granted) ===');
@@ -100,33 +104,51 @@ export function printManualScimChecklist(groupName: string): void {
   console.error('');
 }
 
+export type AppWiringStatus = 'verified' | 'unverified';
+
 export type PreflightSummary = {
   groupId: string;
   groupName: string;
   members: Array<{ id: string; login: string; status: string }>;
   apps: Array<{ id: string; label: string }> | null;
-  appsReadDegraded: boolean;
+  appWiringStatus: AppWiringStatus;
 };
 
 export async function runPreflight(
   probe: ReadOnlyOktaProbe,
   groupId: string,
+  scopes: string[],
 ): Promise<PreflightSummary> {
   const group = await probe.getGroup(groupId);
   const members = await probe.listGroupUsers(groupId);
 
+  if (!hasOktaAppsReadScope(scopes)) {
+    printManualScimChecklist(group.name);
+    return {
+      groupId,
+      groupName: group.name,
+      members,
+      apps: null,
+      appWiringStatus: 'unverified',
+    };
+  }
+
   let apps: Array<{ id: string; label: string }> | null = null;
-  let appsReadDegraded = false;
   try {
     apps = await probe.listAssignedApplicationsForGroup(groupId);
   } catch (err: unknown) {
     const mapped = mapOktaSdkError(err);
     if (mapped instanceof ForbiddenError || (mapped.message && mapped.message.includes('403'))) {
-      appsReadDegraded = true;
       printManualScimChecklist(group.name);
-    } else {
-      throw mapped;
+      return {
+        groupId,
+        groupName: group.name,
+        members,
+        apps: null,
+        appWiringStatus: 'unverified',
+      };
     }
+    throw mapped;
   }
 
   return {
@@ -134,7 +156,7 @@ export async function runPreflight(
     groupName: group.name,
     members,
     apps,
-    appsReadDegraded,
+    appWiringStatus: 'verified',
   };
 }
 
@@ -149,7 +171,7 @@ export async function runPreflightCli(): Promise<void> {
   );
 
   const probe = createReadOnlyOktaProbe(config);
-  const summary = await runPreflight(probe, config.oktaDemoGroupId);
+  const summary = await runPreflight(probe, config.oktaDemoGroupId, config.scopes);
 
   console.error('[cascade:preflight] demo group: ' + summary.groupName + ' (' + summary.groupId + ')');
   console.error('[cascade:preflight] members (' + summary.members.length + '):');
@@ -159,8 +181,10 @@ export async function runPreflightCli(): Promise<void> {
     );
   }
 
-  if (summary.appsReadDegraded) {
-    console.error('[cascade:preflight] app assignments: skipped (okta.apps.read not granted)');
+  if (summary.appWiringStatus === 'unverified') {
+    console.error(
+      '[cascade:preflight] app assignments: UNVERIFIED (okta.apps.read not granted or API denied)',
+    );
   } else if (summary.apps) {
     console.error('[cascade:preflight] apps assigned to group (' + summary.apps.length + '):');
     for (const app of summary.apps) {
