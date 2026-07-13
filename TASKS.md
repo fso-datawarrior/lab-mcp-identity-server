@@ -9,7 +9,7 @@
 
 - [ ] **L3-M5-01** Least-privilege writeup
 - [ ] **L3-M5-02** go-appsec pentest
-  - Probe A (offline gate-bypass suite) merged via feat/m5-pentest-gate-bypass: 12 adversarial tests, 11 HELD / 1 GAP (AD-9 blank/whitespace justification accepts a pending; low). docs/PENTEST-FINDINGS.md. Probe B (audit integrity) and Probe C (live hostile-profile injection) still pending.
+  - Probe A (offline gate-bypass suite) merged via feat/m5-pentest-gate-bypass: 12 adversarial tests, 11 HELD; 1 GAP found (AD-9 blank/whitespace justification) now CLOSED via feat/m5-ad9-justification-nonempty (REQUIRED_JUSTIFICATION, non-empty trimmed). docs/PENTEST-FINDINGS.md. Probe B (audit integrity) and Probe C (live hostile-profile injection) still pending.
 - [ ] **L3-M5-03** BREAK-GLASS / checklist / asqav docs
 
 ## Done
