@@ -7,6 +7,12 @@ import { handleGrantAccess } from "./tools/grantAccess.js";
 import { handleProvisionUser } from "./tools/provisionUser.js";
 import { handleRevokeAccess } from "./tools/revokeAccess.js";
 
+/** Required non-empty justification for Tier 3 MCP tool inputs (trimmed). */
+export const REQUIRED_JUSTIFICATION = z
+  .string()
+  .trim()
+  .min(1, "justification must not be empty");
+
 /** Exact MCP tool names registered by createServer. No approve/deny/resolve. */
 export const REGISTERED_TOOL_NAMES: string[] = [
   "get_user",
@@ -97,7 +103,7 @@ export function createServer(deps: ServerDeps): McpServer {
       inputSchema: {
         userId: z.string().describe("Okta user id"),
         group: z.string().describe("Group name"),
-        justification: z.string().describe("Required justification"),
+        justification: REQUIRED_JUSTIFICATION.describe("Required justification"),
       },
     },
     async ({ userId, group, justification }) => {
@@ -120,7 +126,7 @@ export function createServer(deps: ServerDeps): McpServer {
       inputSchema: {
         userId: z.string().describe("Okta user id"),
         group: z.string().describe("Group name"),
-        justification: z.string().describe("Required justification"),
+        justification: REQUIRED_JUSTIFICATION.describe("Required justification"),
       },
     },
     async ({ userId, group, justification }) => {
@@ -142,7 +148,7 @@ export function createServer(deps: ServerDeps): McpServer {
         "Request user deactivation (Tier 3). Creates a pending approval; does not execute.",
       inputSchema: {
         userId: z.string().describe("Okta user id"),
-        justification: z.string().describe("Required justification"),
+        justification: REQUIRED_JUSTIFICATION.describe("Required justification"),
       },
     },
     async ({ userId, justification }) => {
