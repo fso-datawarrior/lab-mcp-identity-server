@@ -31,24 +31,43 @@ Expected: demo group name and members printed; app assignments listed or manual 
 
 ## Step 2: Offline timeline correlation
 
-After a live cascade (not run by this harness), correlate the two audit logs:
+After a live cascade (not run by this harness), correlate the two audit logs.
+
+`--okta-id` is recommended. When omitted, the correlator falls back to sole-candidate only when exactly one approved `revoke_access` line exists in the Lab 3 log.
+
+`--scim-id` overrides Lab 1 deprovision matching when multiple PATCH lines exist or when the joiner-leaver run has no PUT (POST create only).
 
 ```bash
-pnpm cascade:timeline \
+pnpm cascade:timeline -- \
   --lab3 data/audit.jsonl \
   --lab1 /path/to/lab-okta-scim-server/logs/audit.jsonl \
   --user cascade-active@example.com \
   --okta-id 00uYourOktaUserId
 ```
 
+With explicit SCIM id:
+
+```bash
+pnpm cascade:timeline -- \
+  --lab3 data/audit.jsonl \
+  --lab1 /path/to/lab-okta-scim-server/logs/audit.jsonl \
+  --user cascade-active@example.com \
+  --okta-id 00uYourOktaUserId \
+  --scim-id scimYourUserId
+```
+
 JSON output:
 
 ```bash
-pnpm cascade:timeline --lab3 data/audit.jsonl --lab1 ../lab-okta-scim-server/logs/audit.jsonl \
-  --user cascade-active@example.com --okta-id 00uYourOktaUserId --json
+pnpm cascade:timeline -- \
+  --lab3 data/audit.jsonl \
+  --lab1 ../lab-okta-scim-server/logs/audit.jsonl \
+  --user cascade-active@example.com \
+  --okta-id 00uYourOktaUserId \
+  --json
 ```
 
-Expected: one merged timestamp-ordered timeline and cascade latency in seconds.
+Expected: one merged timestamp-ordered timeline, `matchMethod` in output, and cascade latency in seconds.
 
 Fail closed if either chain endpoint is missing:
 
@@ -56,10 +75,24 @@ Fail closed if either chain endpoint is missing:
 no downstream deprovision found for <user> - is the SCIM app wired and the user ACTIVE?
 ```
 
+Ambiguous Lab 1 logs (multiple `active:false` PATCHes with no scim-id or userName match) fail closed without guessing.
+
 ## Fixture dry run (no credentials)
 
+Joiner-leaver (POST create, no PUT):
+
 ```bash
-pnpm cascade:timeline \
+pnpm cascade:timeline -- \
+  --lab3 tests/fixtures/lab3-cascade-audit.jsonl \
+  --lab1 tests/fixtures/lab1-joiner-leaver-audit.jsonl \
+  --user cascade-active@example.com \
+  --okta-id 00uCascadeUser
+```
+
+Username match via PUT map:
+
+```bash
+pnpm cascade:timeline -- \
   --lab3 tests/fixtures/lab3-cascade-audit.jsonl \
   --lab1 tests/fixtures/lab1-cascade-audit.jsonl \
   --user cascade-active@example.com \
@@ -74,6 +107,7 @@ pnpm cascade:timeline \
 | Tunnel URL rotated | Re-point SCIM base URL before cascade rehearsal |
 | `okta.apps.read` missing | Preflight degrades to manual console checklist |
 | Okta membership eventual consistency | See DEMO-RUNBOOK section 8; smoke test retries |
+| Joiner-leaver without PUT | Timeline uses sole-candidate fallback; stderr notes the match method |
 
 ## What this harness does NOT do
 

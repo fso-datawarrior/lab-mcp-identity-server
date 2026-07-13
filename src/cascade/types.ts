@@ -16,16 +16,20 @@ export type TimelineEvent = {
   detail: string;
 };
 
+export type DeprovisionMatchMethod = 'scim-id' | 'username' | 'sole-candidate';
+
 export type CascadeTimelineInput = {
   lab3Path: string;
   lab1Path: string;
   userEmail: string;
   oktaUserId?: string;
+  scimUserId?: string;
 };
 
 export type CascadeTimelineResult = {
   userEmail: string;
   oktaUserId: string;
+  matchMethod: DeprovisionMatchMethod;
   events: TimelineEvent[];
   cascadeLatencySeconds: number | null;
   lab3RevokeApproved: Lab3AuditEntry;
@@ -35,6 +39,7 @@ export type CascadeTimelineResult = {
 export type CascadeTimelineJson = {
   user: string;
   oktaUserId: string;
+  matchMethod: DeprovisionMatchMethod;
   cascadeLatencySeconds: number | null;
   events: TimelineEvent[];
   lab3RevokeApproved: Lab3AuditEntry;

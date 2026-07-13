@@ -12,6 +12,7 @@ type TimelineCliArgs = {
   lab1: string;
   user: string;
   oktaId?: string;
+  scimId?: string;
   json: boolean;
 };
 
@@ -20,6 +21,7 @@ function parseTimelineArgs(argv: string[]): TimelineCliArgs {
   let lab1 = '';
   let user = '';
   let oktaId: string | undefined;
+  let scimId: string | undefined;
   let json = false;
 
   for (let i = 0; i < argv.length; i++) {
@@ -32,6 +34,8 @@ function parseTimelineArgs(argv: string[]): TimelineCliArgs {
       user = argv[++i];
     } else if (arg === '--okta-id' && argv[i + 1]) {
       oktaId = argv[++i];
+    } else if (arg === '--scim-id' && argv[i + 1]) {
+      scimId = argv[++i];
     } else if (arg === '--json') {
       json = true;
     }
@@ -39,11 +43,11 @@ function parseTimelineArgs(argv: string[]): TimelineCliArgs {
 
   if (!lab3 || !lab1 || !user) {
     throw new Error(
-      'usage: cascade timeline --lab3 <path> --lab1 <path> --user <email> [--okta-id <id>] [--json]',
+      'usage: cascade timeline --lab3 <path> --lab1 <path> --user <email> [--okta-id <id>] [--scim-id <id>] [--json]',
     );
   }
 
-  return { lab3, lab1, user, oktaId, json };
+  return { lab3, lab1, user, oktaId, scimId, json };
 }
 
 async function runTimeline(argv: string[]): Promise<void> {
@@ -54,7 +58,15 @@ async function runTimeline(argv: string[]): Promise<void> {
       lab1Path: args.lab1,
       userEmail: args.user,
       oktaUserId: args.oktaId,
+      scimUserId: args.scimId,
     });
+
+    if (result.matchMethod === 'sole-candidate') {
+      console.error(
+        '[cascade:timeline] note: Lab 1 deprovision matched by sole-candidate fallback, not by userName',
+      );
+    }
+
     if (args.json) {
       console.log(JSON.stringify(toTimelineJson(result), null, 2));
     } else {

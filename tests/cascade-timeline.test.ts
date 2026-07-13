@@ -5,6 +5,8 @@ import {
   correlateCascade,
   CascadeTimelineError,
   cascadeLatencySeconds,
+  findLab1Deprovision,
+  isDeprovisionPatch,
 } from '../src/cascade/timeline.js';
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), 'fixtures');
@@ -19,6 +21,7 @@ describe('cascade timeline correlator', () => {
     });
 
     expect(result.oktaUserId).toBe('00uCascadeUser');
+    expect(result.matchMethod).toBe('username');
     expect(result.lab3RevokeApproved.decision).toBe('approved');
     expect(result.lab1Deprovision.method).toBe('PATCH');
     expect(result.events).toHaveLength(2);
@@ -59,5 +62,112 @@ describe('cascade timeline correlator', () => {
     expect(result.events[0].source).toBe('lab3');
     expect(result.events[1].source).toBe('lab1');
     expect(result.cascadeLatencySeconds).toBe(25);
+    expect(result.matchMethod).toBe('username');
+  });
+
+  it('correlates pure joiner-leaver run via sole-candidate fallback', async () => {
+    const result = await correlateCascade({
+      lab3Path: join(FIXTURES, 'lab3-cascade-audit.jsonl'),
+      lab1Path: join(FIXTURES, 'lab1-joiner-leaver-audit.jsonl'),
+      userEmail: 'cascade-active@example.com',
+      oktaUserId: '00uCascadeUser',
+    });
+
+    expect(result.matchMethod).toBe('sole-candidate');
+    expect(result.lab1Deprovision.path).toBe('/scim/v2/Users/scim-joiner-001');
+    expect(result.cascadeLatencySeconds).toBe(25);
+  });
+
+  it('detects object-form deprovision PATCH', async () => {
+    const entry = {
+      timestamp: '2026-07-13T18:00:30.000Z',
+      method: 'PATCH',
+      path: '/scim/v2/Users/scim-object-001',
+      actor: 'test',
+      request: { operations: [{ op: 'replace', value: { active: false } }] },
+      status: 200,
+    };
+    expect(isDeprovisionPatch(entry)).toBe(true);
+
+    const result = await correlateCascade({
+      lab3Path: join(FIXTURES, 'lab3-cascade-audit.jsonl'),
+      lab1Path: join(FIXTURES, 'lab1-object-form-deprovision-audit.jsonl'),
+      userEmail: 'cascade-active@example.com',
+      oktaUserId: '00uCascadeUser',
+    });
+
+    expect(result.matchMethod).toBe('username');
+    expect(result.lab1Deprovision.path).toBe('/scim/v2/Users/scim-object-001');
+  });
+
+  it('rejects undefined value as deprovision', () => {
+    const entry = {
+      timestamp: '2026-07-13T18:00:30.000Z',
+      method: 'PATCH',
+      path: '/scim/v2/Users/scim-test',
+      actor: 'test',
+      request: { operations: [{ op: 'replace', path: 'active' }] },
+      status: 200,
+    };
+    expect(isDeprovisionPatch(entry)).toBe(false);
+  });
+
+  it('matches explicit --scim-id override', async () => {
+    const result = await correlateCascade({
+      lab3Path: join(FIXTURES, 'lab3-cascade-audit.jsonl'),
+      lab1Path: join(FIXTURES, 'lab1-scim-id-override-audit.jsonl'),
+      userEmail: 'cascade-active@example.com',
+      oktaUserId: '00uCascadeUser',
+      scimUserId: 'scim-cascade-002',
+    });
+
+    expect(result.matchMethod).toBe('scim-id');
+    expect(result.lab1Deprovision.path).toBe('/scim/v2/Users/scim-cascade-002');
+  });
+
+  it('fails closed on ambiguous deprovision when multiple PATCHes and no match', async () => {
+    await expect(
+      correlateCascade({
+        lab3Path: join(FIXTURES, 'lab3-cascade-audit.jsonl'),
+        lab1Path: join(FIXTURES, 'lab1-ambiguous-deprovision-audit.jsonl'),
+        userEmail: 'cascade-active@example.com',
+        oktaUserId: '00uCascadeUser',
+      }),
+    ).rejects.toThrow(/ambiguous Lab 1 deprovision/);
+
+    expect(() =>
+      findLab1Deprovision(
+        [
+          {
+            timestamp: '2026-07-13T18:00:20.000Z',
+            method: 'PATCH',
+            path: '/scim/v2/Users/a',
+            actor: 'x',
+            request: { operations: [{ op: 'replace', path: 'active', value: false }] },
+            status: 200,
+          },
+          {
+            timestamp: '2026-07-13T18:00:25.000Z',
+            method: 'PATCH',
+            path: '/scim/v2/Users/b',
+            actor: 'x',
+            request: { operations: [{ op: 'replace', path: 'active', value: false }] },
+            status: 200,
+          },
+        ],
+        'nobody@example.com',
+      ),
+    ).toThrow(/ambiguous Lab 1 deprovision/);
+  });
+
+  it('uses sole Lab 3 approved revoke when email does not match args', async () => {
+    const result = await correlateCascade({
+      lab3Path: join(FIXTURES, 'lab3-cascade-audit.jsonl'),
+      lab1Path: join(FIXTURES, 'lab1-joiner-leaver-audit.jsonl'),
+      userEmail: 'cascade-active@example.com',
+    });
+
+    expect(result.oktaUserId).toBe('00uCascadeUser');
+    expect(result.matchMethod).toBe('sole-candidate');
   });
 });

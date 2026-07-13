@@ -4,6 +4,7 @@ import type {
   CascadeTimelineInput,
   CascadeTimelineJson,
   CascadeTimelineResult,
+  DeprovisionMatchMethod,
   Lab1AuditEntry,
   TimelineEvent,
 } from './types.js';
@@ -16,6 +17,11 @@ export class CascadeTimelineError extends Error {
     this.name = 'CascadeTimelineError';
   }
 }
+
+export type Lab1DeprovisionMatch = {
+  entry: Lab1AuditEntry;
+  matchMethod: DeprovisionMatchMethod;
+};
 
 export async function readJsonlLines<T>(filePath: string): Promise<T[]> {
   const content = await readFile(filePath, 'utf8');
@@ -38,21 +44,24 @@ export function findLab3ApprovedRevoke(
   if (matches.length === 0) {
     return null;
   }
-  return matches.sort((a, b) => a.timestamp.localeCompare(b.timestamp)).at(-1) ?? null;
+  return pickLatestLab3(matches);
 }
 
 export function resolveOktaUserId(
   entries: Lab3AuditEntry[],
   userEmail: string,
   explicitOktaId?: string,
-): string | null {
+): string {
   if (explicitOktaId?.trim()) {
     return explicitOktaId.trim();
   }
+
   const approved = entries.filter(
     (entry) => entry.tool === 'revoke_access' && entry.decision === 'approved',
   );
-  for (const entry of approved.reverse()) {
+  const needle = userEmail.toLowerCase();
+
+  for (const entry of [...approved].reverse()) {
     const args = entry.args;
     const login =
       typeof args.userId === 'string'
@@ -60,11 +69,34 @@ export function resolveOktaUserId(
         : typeof args.login === 'string'
           ? args.login
           : null;
-    if (login && login.toLowerCase() === userEmail.toLowerCase()) {
+    if (login && login.toLowerCase() === needle) {
+      if (!entry.targetUser) {
+        throw new CascadeTimelineError(
+          'no Lab 3 approved revoke_access targetUser for ' + userEmail,
+        );
+      }
       return entry.targetUser;
     }
   }
-  return null;
+
+  if (approved.length === 1) {
+    if (!approved[0].targetUser) {
+      throw new CascadeTimelineError(
+        'no Lab 3 approved revoke_access targetUser for sole-candidate revoke',
+      );
+    }
+    return approved[0].targetUser;
+  }
+
+  if (approved.length > 1) {
+    throw new CascadeTimelineError(
+      'ambiguous Lab 3 approved revoke: multiple revokes and none match ' + userEmail,
+    );
+  }
+
+  throw new CascadeTimelineError(
+    'no Lab 3 approved revoke_access found for ' + userEmail,
+  );
 }
 
 export function buildScimIdToUserNameMap(
@@ -72,18 +104,16 @@ export function buildScimIdToUserNameMap(
 ): Map<string, string> {
   const map = new Map<string, string>();
   for (const entry of entries) {
-    if (entry.method !== 'POST' && entry.method !== 'PUT') {
+    if (entry.method !== 'PUT') {
       continue;
     }
     const userName = entry.request.userName;
     if (typeof userName !== 'string' || userName.length === 0) {
       continue;
     }
-    if (entry.method === 'PUT') {
-      const match = entry.path.match(SCIM_USER_PATH);
-      if (match?.[1]) {
-        map.set(match[1], userName);
-      }
+    const match = entry.path.match(SCIM_USER_PATH);
+    if (match?.[1]) {
+      map.set(match[1], userName);
     }
   }
   return map;
@@ -92,6 +122,18 @@ export function buildScimIdToUserNameMap(
 export function extractScimUserId(path: string): string | null {
   const match = path.match(SCIM_USER_PATH);
   return match?.[1] ?? null;
+}
+
+function isActiveFalseValue(value: unknown): boolean {
+  return value === false;
+}
+
+function isObjectFormDeprovision(value: unknown): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+  const record = value as { active?: unknown };
+  return record.active === false;
 }
 
 export function isDeprovisionPatch(entry: Lab1AuditEntry): boolean {
@@ -112,32 +154,53 @@ export function isDeprovisionPatch(entry: Lab1AuditEntry): boolean {
     }
     const op = raw as { op?: string; path?: string; value?: unknown };
     const opName = String(op.op ?? '').toLowerCase();
-    const path = String(op.path ?? '').toLowerCase();
-    const isActivePath =
-      path === 'active' || path.endsWith(':active') || path.includes('active');
-    if (opName !== 'replace' || !isActivePath) {
+    if (opName !== 'replace') {
       return false;
     }
-    if (op.value === false) {
-      return true;
+    const path = String(op.path ?? '').toLowerCase();
+    if (path.length > 0) {
+      const isActivePath =
+        path === 'active' || path.endsWith(':active') || path.includes('active');
+      return isActivePath && isActiveFalseValue(op.value);
     }
-    if (op.value === undefined) {
-      return true;
-    }
-    return false;
+    return isObjectFormDeprovision(op.value);
   });
+}
+
+function pickLatestLab1(entries: Lab1AuditEntry[]): Lab1AuditEntry {
+  return entries.sort((a, b) => a.timestamp.localeCompare(b.timestamp)).at(-1)!;
+}
+
+function pickLatestLab3(entries: Lab3AuditEntry[]): Lab3AuditEntry {
+  return entries.sort((a, b) => a.timestamp.localeCompare(b.timestamp)).at(-1)!;
 }
 
 export function findLab1Deprovision(
   entries: Lab1AuditEntry[],
   userEmail: string,
-): Lab1AuditEntry | null {
+  scimUserId?: string,
+): Lab1DeprovisionMatch | null {
+  const deprovisionPatches = entries.filter(isDeprovisionPatch);
+
+  if (scimUserId?.trim()) {
+    const id = scimUserId.trim();
+    const matches = deprovisionPatches.filter((entry) => {
+      return extractScimUserId(entry.path) === id;
+    });
+    if (matches.length === 1) {
+      return { entry: pickLatestLab1(matches), matchMethod: 'scim-id' };
+    }
+    if (matches.length > 1) {
+      throw new CascadeTimelineError(
+        'ambiguous Lab 1 deprovision: multiple active:false PATCHes match scim-id ' + id,
+      );
+    }
+    return null;
+  }
+
   const scimMap = buildScimIdToUserNameMap(entries);
   const needle = userEmail.toLowerCase();
-  const matches = entries.filter((entry) => {
-    if (!isDeprovisionPatch(entry)) {
-      return false;
-    }
+  const usernameMatches = deprovisionPatches.filter((entry) => {
     const scimId = extractScimUserId(entry.path);
     if (!scimId) {
       return false;
@@ -145,10 +208,29 @@ export function findLab1Deprovision(
     const userName = scimMap.get(scimId);
     return userName?.toLowerCase() === needle;
   });
-  if (matches.length === 0) {
-    return null;
+  if (usernameMatches.length === 1) {
+    return { entry: pickLatestLab1(usernameMatches), matchMethod: 'username' };
   }
-  return matches.sort((a, b) => a.timestamp.localeCompare(b.timestamp)).at(-1) ?? null;
+  if (usernameMatches.length > 1) {
+    throw new CascadeTimelineError(
+      'ambiguous Lab 1 deprovision: multiple active:false PATCHes match userName ' + userEmail,
+    );
+  }
+
+  if (deprovisionPatches.length === 1) {
+    return { entry: deprovisionPatches[0], matchMethod: 'sole-candidate' };
+  }
+
+  if (deprovisionPatches.length > 1) {
+    throw new CascadeTimelineError(
+      'ambiguous Lab 1 deprovision: ' +
+        deprovisionPatches.length +
+        ' active:false PATCHes and none match user ' +
+        userEmail,
+    );
+  }
+
+  return null;
 }
 
 export function cascadeLatencySeconds(
@@ -192,11 +274,6 @@ export async function correlateCascade(
     input.userEmail,
     input.oktaUserId,
   );
-  if (!oktaUserId) {
-    throw new CascadeTimelineError(
-      'no Lab 3 approved revoke_access found for ' + input.userEmail,
-    );
-  }
 
   const lab3Revoke = findLab3ApprovedRevoke(lab3Entries, oktaUserId);
   if (!lab3Revoke) {
@@ -205,8 +282,21 @@ export async function correlateCascade(
     );
   }
 
-  const lab1Deprovision = findLab1Deprovision(lab1Entries, input.userEmail);
-  if (!lab1Deprovision) {
+  let lab1Match: Lab1DeprovisionMatch | null;
+  try {
+    lab1Match = findLab1Deprovision(
+      lab1Entries,
+      input.userEmail,
+      input.scimUserId,
+    );
+  } catch (err: unknown) {
+    if (err instanceof CascadeTimelineError) {
+      throw err;
+    }
+    throw err;
+  }
+
+  if (!lab1Match) {
     throw new CascadeTimelineError(
       'no downstream deprovision found for ' +
         input.userEmail +
@@ -214,19 +304,24 @@ export async function correlateCascade(
     );
   }
 
-  const events = buildMergedTimeline(lab3Revoke, lab1Deprovision, input.userEmail);
+  const events = buildMergedTimeline(
+    lab3Revoke,
+    lab1Match.entry,
+    input.userEmail,
+  );
   const cascadeLatencySecondsValue = cascadeLatencySeconds(
     lab3Revoke.timestamp,
-    lab1Deprovision.timestamp,
+    lab1Match.entry.timestamp,
   );
 
   return {
     userEmail: input.userEmail,
     oktaUserId,
+    matchMethod: lab1Match.matchMethod,
     events,
     cascadeLatencySeconds: cascadeLatencySecondsValue,
     lab3RevokeApproved: lab3Revoke,
-    lab1Deprovision,
+    lab1Deprovision: lab1Match.entry,
   };
 }
 
@@ -234,6 +329,7 @@ export function formatTimelineHuman(result: CascadeTimelineResult): string {
   const lines: string[] = [
     'Cascade timeline for ' + result.userEmail,
     'Okta user id: ' + result.oktaUserId,
+    'Match method: ' + result.matchMethod,
     '',
   ];
   for (const event of result.events) {
@@ -252,6 +348,7 @@ export function toTimelineJson(result: CascadeTimelineResult): CascadeTimelineJs
   return {
     user: result.userEmail,
     oktaUserId: result.oktaUserId,
+    matchMethod: result.matchMethod,
     cascadeLatencySeconds: result.cascadeLatencySeconds,
     events: result.events,
     lab3RevokeApproved: result.lab3RevokeApproved,
