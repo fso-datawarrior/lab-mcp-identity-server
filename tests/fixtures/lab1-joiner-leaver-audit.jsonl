@@ -1,0 +1,2 @@
+{"timestamp":"2026-07-13T17:55:00.000Z","method":"POST","path":"/scim/v2/Users","actor":"cda486dca4a9","request":{"userName":"cascade-active@example.com","displayName":"Cascade Active"},"status":201}
+{"timestamp":"2026-07-13T18:00:30.000Z","method":"PATCH","path":"/scim/v2/Users/scim-joiner-001","actor":"cda486dca4a9","request":{"operations":[{"op":"replace","path":"active","value":false}]},"status":200}

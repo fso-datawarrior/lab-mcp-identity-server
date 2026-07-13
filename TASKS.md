@@ -2,15 +2,14 @@
 
 > Note: this file may be normalized later by the PMO task template. Task IDs below are stable for now.
 
-## Now (M1)
+## Now (M4)
 
-- [ ] Live end-to-end gate demo through MCP tools
+- [ ] **L3-M4-01** Lab 1 cascade harness (read-only preflight + offline timeline correlator; see docs/CASCADE-RUNBOOK.md)
 
 ## Next (M2)
 
 ## Later (M3-M5)
 
-- [ ] **L3-M4-01** Lab 1 cascade
 - [ ] **L3-M5-01** Least-privilege writeup
 - [ ] **L3-M5-02** go-appsec pentest
 - [ ] **L3-M5-03** BREAK-GLASS / checklist / asqav docs
@@ -28,3 +27,9 @@
 - [x] **L3-M3-01** Out-of-band gate + durable pending state
 - [x] **L3-M5a** Recursive audit redaction + exactly-once approving marker
 - [x] **L3-M5b** Optional HMAC-signed audit entries
+- [x] **L3-DEMO-01** Real-mode entry + approval CLI wiring + live demo runbook (a099b59)
+- [x] **L3-DEMO-01b** Module-mode verifyChain evidence command + configurable approval TTL (415dd6c)
+- [x] **L3-DEMO-01c** Desktop launcher pins cwd for shared pending store (49d91c1)
+- [x] **L3-DEMO-02** Client mode stamp on pending requests + resolver mismatch refusal (82b3fb9)
+- [x] **L3-DEMO-03** Smoke test eventual consistency + bob self-heal (7103ecc)
+- [x] **L3-DEMO-live** Live end-to-end gate demo run (2026-07-13)

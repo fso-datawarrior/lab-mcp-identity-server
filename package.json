@@ -19,7 +19,9 @@
     "smoke:okta": "tsx --env-file=.env scripts/smoke-okta.ts",
     "seed:demo": "tsx --env-file=.env scripts/seed-demo.ts",
     "approve": "tsx --env-file=.env src/cli/resolve.ts approve",
-    "deny": "tsx --env-file=.env src/cli/resolve.ts deny"
+    "deny": "tsx --env-file=.env src/cli/resolve.ts deny",
+    "cascade:preflight": "tsx --env-file=.env scripts/cascade.ts preflight",
+    "cascade:timeline": "tsx scripts/cascade.ts timeline"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
