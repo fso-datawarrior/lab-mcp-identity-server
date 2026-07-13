@@ -16,7 +16,11 @@ export type TimelineEvent = {
   detail: string;
 };
 
-export type DeprovisionMatchMethod = 'scim-id' | 'username' | 'sole-candidate';
+export type DeprovisionMatchMethod =
+  | 'scim-id'
+  | 'scim-id-replace-unconfirmed'
+  | 'username'
+  | 'sole-candidate';
 
 export type CascadeTimelineInput = {
   lab3Path: string;

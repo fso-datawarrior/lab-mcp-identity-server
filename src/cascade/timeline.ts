@@ -167,6 +167,32 @@ export function isDeprovisionPatch(entry: Lab1AuditEntry): boolean {
   });
 }
 
+/** Lossy Lab 1 audit: op replace with path and value omitted (AD-17). */
+export function isLossyDeprovisionPatch(entry: Lab1AuditEntry): boolean {
+  if (entry.method !== 'PATCH') {
+    return false;
+  }
+  if (!extractScimUserId(entry.path)) {
+    return false;
+  }
+  const operations = entry.request.operations;
+  if (!Array.isArray(operations)) {
+    return false;
+  }
+  return operations.some((raw) => {
+    if (!raw || typeof raw !== 'object') {
+      return false;
+    }
+    const op = raw as { op?: string; path?: string; value?: unknown };
+    if (String(op.op ?? '').toLowerCase() !== 'replace') {
+      return false;
+    }
+    const hasPath = op.path !== undefined && op.path !== null && String(op.path).length > 0;
+    const hasValue = op.value !== undefined;
+    return !hasPath && !hasValue;
+  });
+}
+
 function pickLatestLab1(entries: Lab1AuditEntry[]): Lab1AuditEntry {
   return entries.sort((a, b) => a.timestamp.localeCompare(b.timestamp)).at(-1)!;
 }
@@ -184,15 +210,30 @@ export function findLab1Deprovision(
 
   if (scimUserId?.trim()) {
     const id = scimUserId.trim();
-    const matches = deprovisionPatches.filter((entry) => {
+    const strictMatches = deprovisionPatches.filter((entry) => {
       return extractScimUserId(entry.path) === id;
     });
-    if (matches.length === 1) {
-      return { entry: pickLatestLab1(matches), matchMethod: 'scim-id' };
+    if (strictMatches.length === 1) {
+      return { entry: pickLatestLab1(strictMatches), matchMethod: 'scim-id' };
     }
-    if (matches.length > 1) {
+    if (strictMatches.length > 1) {
       throw new CascadeTimelineError(
         'ambiguous Lab 1 deprovision: multiple active:false PATCHes match scim-id ' + id,
+      );
+    }
+
+    const lossyMatches = entries.filter((entry) => {
+      return extractScimUserId(entry.path) === id && isLossyDeprovisionPatch(entry);
+    });
+    if (lossyMatches.length === 1) {
+      return {
+        entry: pickLatestLab1(lossyMatches),
+        matchMethod: 'scim-id-replace-unconfirmed',
+      };
+    }
+    if (lossyMatches.length > 1) {
+      throw new CascadeTimelineError(
+        'ambiguous Lab 1 deprovision: multiple lossy replace PATCHes match scim-id ' + id,
       );
     }
     return null;
@@ -323,6 +364,20 @@ export async function correlateCascade(
     lab3RevokeApproved: lab3Revoke,
     lab1Deprovision: lab1Match.entry,
   };
+}
+
+export const AD17_CAVEAT =
+  '[cascade:timeline] caveat: deprovision matched by asserted scim-id but active:false could not be confirmed from the lossy Lab 1 audit (see AD-17)';
+
+export function printMatchMethodNotes(matchMethod: DeprovisionMatchMethod): void {
+  if (matchMethod === 'sole-candidate') {
+    console.error(
+      '[cascade:timeline] note: Lab 1 deprovision matched by sole-candidate fallback, not by userName',
+    );
+  }
+  if (matchMethod === 'scim-id-replace-unconfirmed') {
+    console.error(AD17_CAVEAT);
+  }
 }
 
 export function formatTimelineHuman(result: CascadeTimelineResult): string {

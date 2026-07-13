@@ -5,6 +5,7 @@ import {
   formatTimelineHuman,
   toTimelineJson,
   CascadeTimelineError,
+  printMatchMethodNotes,
 } from '../src/cascade/timeline.js';
 
 type TimelineCliArgs = {
@@ -61,11 +62,7 @@ async function runTimeline(argv: string[]): Promise<void> {
       scimUserId: args.scimId,
     });
 
-    if (result.matchMethod === 'sole-candidate') {
-      console.error(
-        '[cascade:timeline] note: Lab 1 deprovision matched by sole-candidate fallback, not by userName',
-      );
-    }
+    printMatchMethodNotes(result.matchMethod);
 
     if (args.json) {
       console.log(JSON.stringify(toTimelineJson(result), null, 2));
