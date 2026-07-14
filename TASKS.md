@@ -12,6 +12,7 @@
   - Probe A (offline gate-bypass suite) merged via feat/m5-pentest-gate-bypass: 12 adversarial tests, 11 HELD; 1 GAP found (AD-9 blank/whitespace justification) now CLOSED via feat/m5-ad9-justification-nonempty (REQUIRED_JUSTIFICATION, non-empty trimmed). docs/PENTEST-FINDINGS.md.
   - Probe B (offline audit-integrity suite) merged via feat/m5-pentest-audit-integrity: 10 adversarial tests, 7 HELD / 3 GAP (AD-2 deletion-evidence: tail-truncation, empty file, absent file verify ok). docs/PENTEST-FINDINGS.md. AD-2 gaps closed when `expected` supplied (L3-M5-04 / ADR-0003).
   - Probe C (live hostile-profile injection) still pending.
+  - Probe C mock suite (offline hostile-Okta-profile injection, AD-3) landed on feat/m5-pentest-injection-boundary; live single-user verification (carol) pending operator step.
 - [ ] **L3-M5-03** BREAK-GLASS / checklist / asqav docs
 
 ## Done
