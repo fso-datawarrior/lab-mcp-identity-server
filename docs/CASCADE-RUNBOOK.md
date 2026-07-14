@@ -81,6 +81,17 @@ pnpm cascade:timeline -- \
 
 Expected: one merged timestamp-ordered timeline, `matchMethod` in output, and cascade latency in seconds.
 
+### Lab 3 audit chain verification (ADR-0003)
+
+After a live cascade, verify the Lab 3 hash chain with HMAC and a verify-time deletion-evidence assertion. Read entry count and the last entry's `entryHash`/`sig` from the log, then pass them as `expected` (requires `LAB3_AUDIT_HMAC_KEY` in `.env`):
+
+```bash
+pnpm build
+node --env-file=.env --input-type=module -e "const { readFile } = await import('node:fs/promises'); const { verifyChain } = await import('./dist/audit/log.js'); const path = 'data/audit.jsonl'; const key = process.env.LAB3_AUDIT_HMAC_KEY; const content = await readFile(path, 'utf8'); const lines = content.split('\n').filter((l) => l.length > 0); const last = JSON.parse(lines[lines.length - 1]); const r = await verifyChain(path, { signingKey: key, expected: { count: lines.length, headEntryHash: last.entryHash, headSig: last.sig } }); console.log(JSON.stringify(r));"
+```
+
+Expected: `{ "ok": true }`. Without `expected`, absent/empty/tail-truncated logs still verify ok by design (backward compatible); callers that care about deletion-evidence must supply `expected`.
+
 Fail closed if either chain endpoint is missing:
 
 ```

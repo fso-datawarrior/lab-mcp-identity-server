@@ -38,8 +38,15 @@ export type AppendAuditOpts = {
   signingKey?: string;
 };
 
+export type VerifyChainExpected = {
+  count: number;
+  headEntryHash?: string;
+  headSig?: string;
+};
+
 export type VerifyChainOpts = {
   signingKey?: string;
+  expected?: VerifyChainExpected;
 };
 
 export type VerifyChainResult = {
@@ -142,12 +149,22 @@ export async function appendAudit(
  * Recompute hashes and verify the prevHash chain for every line in the file.
  * When opts.signingKey is set, also require and verify each entry's HMAC sig.
  * Without a signingKey, any sig fields are ignored (hash-only, backward compatible).
+ * When opts.expected is set, also fail closed on absent/empty files, count mismatch,
+ * or head entryHash/sig mismatch (ADR-0003 verify-time deletion-evidence).
  */
 export async function verifyChain(
   filePath: string,
   opts?: VerifyChainOpts,
 ): Promise<VerifyChainResult> {
+  const expected = opts?.expected;
+
   if (!(await fileExists(filePath))) {
+    if (expected !== undefined) {
+      return {
+        ok: false,
+        reason: `expected ${expected.count} entries but audit file is absent`,
+      };
+    }
     return { ok: true };
   }
 
@@ -155,6 +172,7 @@ export async function verifyChain(
   const lines = content.split("\n").filter((line) => line.length > 0);
 
   let expectedPrev = GENESIS_HASH;
+  let lastEntry: AuditEntry | undefined;
 
   for (let i = 0; i < lines.length; i++) {
     const lineNumber = i + 1;
@@ -206,6 +224,28 @@ export async function verifyChain(
     }
 
     expectedPrev = storedHash;
+    lastEntry = entry;
+  }
+
+  if (expected !== undefined) {
+    if (lines.length !== expected.count) {
+      return {
+        ok: false,
+        reason: `entry count mismatch: expected ${expected.count}, found ${lines.length}`,
+      };
+    }
+
+    if (expected.headEntryHash !== undefined) {
+      if (lastEntry === undefined || lastEntry.entryHash !== expected.headEntryHash) {
+        return { ok: false, reason: "head entryHash mismatch" };
+      }
+    }
+
+    if (opts?.signingKey && expected.headSig !== undefined) {
+      if (lastEntry === undefined || lastEntry.sig !== expected.headSig) {
+        return { ok: false, reason: "head signature mismatch" };
+      }
+    }
   }
 
   return { ok: true };

@@ -43,6 +43,10 @@ pnpm smoke:okta
 
 If `seed:demo` reports a group id that differs from `OKTA_DEMO_GROUP_ID`, update that variable in `.env` and re-run `pnpm smoke:okta`.
 
+## Audit integrity
+
+Hash-chained JSONL audit log with optional HMAC signing (`src/audit/log.ts`). Deletion-evidence is verify-time via the optional `expected` assertion on `verifyChain` (ADR-0003); an external chain-head anchor in a separate trust domain remains the production forward-path (KB ID-183, ID-081).
+
 ## License
 
 MIT. See [LICENSE](./LICENSE).

@@ -164,10 +164,10 @@ All 5 steps should PASS.
    cp data/audit.jsonl demo-audit-$(date +%Y%m%d).jsonl
    ```
 
-2. Verify the hash chain **with HMAC signing** (requires `LAB3_AUDIT_HMAC_KEY` in env):
+2. Verify the hash chain **with HMAC signing and deletion-evidence assertion** (requires `LAB3_AUDIT_HMAC_KEY` in env). Read entry count and the last entry's `entryHash`/`sig` from the log, then assert them at verify time (ADR-0003):
 
    ```bash
-   node --env-file=.env --input-type=module -e "const { verifyChain } = await import('./dist/audit/log.js'); const r = await verifyChain('data/audit.jsonl', { signingKey: process.env.LAB3_AUDIT_HMAC_KEY }); console.log(JSON.stringify(r));"
+   node --env-file=.env --input-type=module -e "const { readFile } = await import('node:fs/promises'); const { verifyChain } = await import('./dist/audit/log.js'); const path = 'data/audit.jsonl'; const key = process.env.LAB3_AUDIT_HMAC_KEY; const content = await readFile(path, 'utf8'); const lines = content.split('\n').filter((l) => l.length > 0); const last = JSON.parse(lines[lines.length - 1]); const r = await verifyChain(path, { signingKey: key, expected: { count: lines.length, headEntryHash: last.entryHash, headSig: last.sig } }); console.log(JSON.stringify(r));"
    ```
 
    **Expected:** `{ "ok": true }`
