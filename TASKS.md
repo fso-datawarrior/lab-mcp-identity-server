@@ -12,7 +12,6 @@
   - Probe A (offline gate-bypass suite) merged via feat/m5-pentest-gate-bypass: 12 adversarial tests, 11 HELD; 1 GAP found (AD-9 blank/whitespace justification) now CLOSED via feat/m5-ad9-justification-nonempty (REQUIRED_JUSTIFICATION, non-empty trimmed). docs/PENTEST-FINDINGS.md.
   - Probe B (offline audit-integrity suite) merged via feat/m5-pentest-audit-integrity: 10 adversarial tests, 7 HELD / 3 GAP (AD-2 deletion-evidence: tail-truncation, empty file, absent file verify ok). docs/PENTEST-FINDINGS.md. AD-2 gaps closed when `expected` supplied (L3-M5-04 / ADR-0003).
   - Probe C fully done (extended mock suite + live carol verification): feat/m5-pentest-injection-boundary — 6 mock adversarial tests (AD-3) + live single-user verification 2026-07-14 vs Integrator org (carol). docs/PENTEST-FINDINGS.md.
-- [ ] **L3-M5-03** BREAK-GLASS / checklist / asqav docs
 
 ## Done
 
@@ -38,3 +37,4 @@
 - [x] **L3-M4-03** Live two-lab cascade verified 2026-07-13: approved revoke on ACTIVE lab3-demo-carol -> SCIM PATCH active:false into Lab 1 (~2.9s, active=false confirmed); smoke:okta 5/5
 - [x] **L3-M4-04** AD-14 preflight hardening: app-wiring marked UNVERIFIED + manual checklist when okta.apps.read absent (branch feat/ad14-preflight-hardening, 314baa2)
 - [x] **L3-M5-04** AD-2 deletion-evidence closed via ADR-0003 verify-time assertion (feat/m5-ad2-deletion-evidence): optional `expected{count,headEntryHash,headSig}` on `verifyChain`; Probe B gap cases closed when supplied; backward compatible without `expected`.
+- [x] **L3-M5-03** BREAK-GLASS + MCP-SERVER-CHECKLIST + asqav self-score (feat/m5-honest-scoring-docs): docs/BREAK-GLASS.md, docs/MCP-SERVER-CHECKLIST.md, README asqav table (5 categories scored); README milestone corrected to M5.
