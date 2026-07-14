@@ -38,3 +38,4 @@
 - [x] **L3-M4-04** AD-14 preflight hardening: app-wiring marked UNVERIFIED + manual checklist when okta.apps.read absent (branch feat/ad14-preflight-hardening, 314baa2)
 - [x] **L3-M5-04** AD-2 deletion-evidence closed via ADR-0003 verify-time assertion (feat/m5-ad2-deletion-evidence): optional `expected{count,headEntryHash,headSig}` on `verifyChain`; Probe B gap cases closed when supplied; backward compatible without `expected`.
 - [x] **L3-M5-03** BREAK-GLASS + MCP-SERVER-CHECKLIST + asqav self-score (feat/m5-honest-scoring-docs): docs/BREAK-GLASS.md, docs/MCP-SERVER-CHECKLIST.md, README asqav table (5 categories scored); README milestone corrected to M5.
+- [x] **L3-P-01** Physical ADR/0002 record added (SCIM audit-event fidelity); on-disk ADR sequence 0001/0002/0003 now complete
