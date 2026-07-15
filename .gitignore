@@ -7,5 +7,6 @@ secrets/
 *.pem
 *.log
 data/audit.jsonl
+demo-audit-*.jsonl
 data/pending/
 .DS_Store
