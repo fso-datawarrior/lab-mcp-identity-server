@@ -129,7 +129,7 @@ The verbatim four-line excerpt, with the real hashes, signatures, and identifier
 | 7 | Empty app-read as proof | honest-confidence | Live preflight | Live | 189a217 (L3-M4-04) | Yes |
 | 8 | Staged vs active cascade | honest-confidence | Wiring analysis | Pre-live | M4-c dedicated active user | Yes |
 | 9 | Tunnel config bleed | operator-environment | Live cascade run | Live | Isolated config (AD-16) | Yes |
-| 10 | Lossy-audit false-negative | operator-environment | Live cascade run | Live | 1ec9160 + f3006a0 (AD-17); confirmed end to end 2026-07-15 | Yes |
+| 10 | Lossy-audit false-negative | operator-environment | Live cascade run | Live | 1ec9160 (Lab 3) + f3006a0 (Lab 1) (AD-17); confirmed end to end 2026-07-15 | Yes |
 
 Split: three caught pre-live by tracing the runtime path on disk (1, 2, 3, plus the analysis catch 8); the rest surfaced only under a second real process, a real eventually-consistent directory, or the real directory SDK against a real profile (6). Every one failed closed.
 

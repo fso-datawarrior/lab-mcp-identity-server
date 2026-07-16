@@ -5,7 +5,7 @@ Demonstration only. Run against your own Okta Integrator org with the lab3 demo 
 ## 0. Prerequisites
 
 1. Copy [`.env.example`](../.env.example) to `.env` and fill in all values, including:
-   - `OKTA_CLIENT_MODE=real` (for the live demo; Claude Desktop also sets this in its `env` block)
+   - `OKTA_CLIENT_MODE=real` (for the live demo; the Desktop launcher reads this from `.env` via `--env-file` and defaults to `real` only when unset, so setting it to `mock` here is the kill-switch)
    - `APPROVAL_SECRET` (out-of-band approver credential; never an MCP tool)
    - `LAB3_AUDIT_HMAC_KEY` (audit HMAC signing key for evidence capture)
    - Okta service app fields (`OKTA_ORG_URL`, `OKTA_OAUTH_CLIENT_ID`, `OKTA_OAUTH_PRIVATE_KEY_PATH`, scopes, `OKTA_DEMO_GROUP_ID`, `LAB3_DEMO_PREFIX`)
@@ -38,14 +38,13 @@ Use `scripts/start-desktop.mjs` (not `dist/index.js` directly): the launcher pin
       "args": [
         "--env-file=<ABSOLUTE_REPO_PATH>/.env",
         "<ABSOLUTE_REPO_PATH>/scripts/start-desktop.mjs"
-      ],
-      "env": {
-        "OKTA_CLIENT_MODE": "real"
-      }
+      ]
     }
   }
 }
 ```
+
+The mode is not pinned in this JSON: `--env-file` loads `OKTA_CLIENT_MODE` from `.env`, and `start-desktop.mjs` defaults it to `real` only when unset. That keeps the documented kill-switch working on the Desktop path (set `OKTA_CLIENT_MODE=mock` in `.env` and restart).
 
 Restart Claude Desktop after saving. Confirm the server connects (check Claude MCP tools list).
 
