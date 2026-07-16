@@ -44,3 +44,4 @@
 - [x] **L3-M4-05** AD-17 confirmed end to end 2026-07-16: two-system SCIM cascade, automatic no-caveat scim-id match, 2.8s
 - [x] **L3-AD-18** AD-18 opened and characterized 2026-07-16: Okta Node SDK omits display-name field on the live read path (sixth dev-vs-runtime seam; fails closed)
 - [x] **L3-AD-19** AD-19 closed 2026-07-16: desktop launcher honors .env OKTA_CLIENT_MODE (bd30939, merged 7ad3b36)
+- [x] **L3-HARDEN-01** Concurrency hardening (AD-20 appendAudit per-path mutex; AD-21 resolvePending O_EXCL single-use claim; hasRealOktaCredentials + LAB3_DEMO_PREFIX; executor-error audit-and-rethrow; sanitize widened bidi/LS/PS/WJ). feat/concurrency-hardening f115c0a -> merged 9d2b9f5. Suite 108 -> 115.
