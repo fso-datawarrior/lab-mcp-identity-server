@@ -60,8 +60,49 @@ export async function handleRevokeAccess(
     return { status: "denied", reason: "group not found" };
   }
 
+  const groupArgs = {
+    userId: args.userId,
+    group: args.group,
+    groupId: resolved.id,
+    groupName: resolved.name,
+  };
+
   try {
     assertDemoGroupAllowed(resolved.id, deps.allowedGroupId);
+
+    const pending = await createPending(
+      deps.pendingDir,
+      {
+        tool: "revoke_access",
+        args: groupArgs,
+        tier: 3,
+        actorFingerprint: deps.actorFingerprint,
+        principal: deps.principal,
+        justification: args.justification,
+        targetUser: args.userId,
+      },
+      { now, ttlSeconds: deps.ttlSeconds },
+    );
+
+    await appendAudit(
+      deps.auditPath,
+      {
+        timestamp: now,
+        tool: "revoke_access",
+        tier: 3,
+        actorFingerprint: deps.actorFingerprint,
+        principal: deps.principal,
+        targetUser: args.userId,
+        args: groupArgs,
+        justification: args.justification,
+        decision: "pending",
+        approverCredential: null,
+        oktaSummary: "revoke pending approval for group " + resolved.name,
+      },
+      { now: deps.now, signingKey: deps.signingKey },
+    );
+
+    return { status: "pending", requestId: pending.requestId };
   } catch (err: unknown) {
     if (err instanceof DemoGroupNotAllowedError) {
       await appendAudit(
@@ -73,12 +114,7 @@ export async function handleRevokeAccess(
           actorFingerprint: deps.actorFingerprint,
           principal: deps.principal,
           targetUser: args.userId,
-          args: {
-            userId: args.userId,
-            group: args.group,
-            groupId: resolved.id,
-            groupName: resolved.name,
-          },
+          args: groupArgs,
           justification: args.justification,
           decision: "denied",
           approverCredential: null,
@@ -88,50 +124,25 @@ export async function handleRevokeAccess(
       );
       return { status: "denied", reason: "group not allowed" };
     }
+
+    const message = err instanceof Error ? err.message : String(err);
+    await appendAudit(
+      deps.auditPath,
+      {
+        timestamp: now,
+        tool: "revoke_access",
+        tier: 3,
+        actorFingerprint: deps.actorFingerprint,
+        principal: deps.principal,
+        targetUser: args.userId,
+        args: groupArgs,
+        justification: args.justification,
+        decision: "denied",
+        approverCredential: null,
+        oktaSummary: "unexpected error: " + message,
+      },
+      { now: deps.now, signingKey: deps.signingKey },
+    );
     throw err;
   }
-
-  const pending = await createPending(
-    deps.pendingDir,
-    {
-      tool: "revoke_access",
-      args: {
-        userId: args.userId,
-        group: args.group,
-        groupId: resolved.id,
-        groupName: resolved.name,
-      },
-      tier: 3,
-      actorFingerprint: deps.actorFingerprint,
-      principal: deps.principal,
-      justification: args.justification,
-      targetUser: args.userId,
-    },
-    { now, ttlSeconds: deps.ttlSeconds },
-  );
-
-  await appendAudit(
-    deps.auditPath,
-    {
-      timestamp: now,
-      tool: "revoke_access",
-      tier: 3,
-      actorFingerprint: deps.actorFingerprint,
-      principal: deps.principal,
-      targetUser: args.userId,
-      args: {
-        userId: args.userId,
-        group: args.group,
-        groupId: resolved.id,
-        groupName: resolved.name,
-      },
-      justification: args.justification,
-      decision: "pending",
-      approverCredential: null,
-      oktaSummary: "revoke pending approval for group " + resolved.name,
-    },
-    { now: deps.now, signingKey: deps.signingKey },
-  );
-
-  return { status: "pending", requestId: pending.requestId };
 }

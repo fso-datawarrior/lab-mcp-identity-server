@@ -112,37 +112,56 @@ async function readLastEntryHash(filePath: string): Promise<string> {
   return last.entryHash;
 }
 
+/** Per-path queue so concurrent appends cannot fork the prevHash chain. */
+const appendQueues = new Map<string, Promise<unknown>>();
+
+function withAppendLock<T>(filePath: string, fn: () => Promise<T>): Promise<T> {
+  const prev = appendQueues.get(filePath) ?? Promise.resolve();
+  const next = prev.then(fn, fn);
+  appendQueues.set(
+    filePath,
+    next.then(
+      () => undefined,
+      () => undefined,
+    ),
+  );
+  return next;
+}
+
 /**
  * Append one hash-chained audit entry as a JSONL line.
  * Caller must supply timestamp, actorFingerprint, and principal for determinism.
  * When opts.signingKey is set, also attach an HMAC signature over entryHash.
+ * Concurrent callers for the same path are serialized in-process.
  */
 export async function appendAudit(
   filePath: string,
   partialEntry: AppendAuditPartial,
   opts?: AppendAuditOpts,
 ): Promise<AuditEntry> {
-  const prevHash = await readLastEntryHash(filePath);
-  const timestamp = opts?.now ?? partialEntry.timestamp;
-  const args = redactSecrets(partialEntry.args);
+  return withAppendLock(filePath, async () => {
+    const prevHash = await readLastEntryHash(filePath);
+    const timestamp = opts?.now ?? partialEntry.timestamp;
+    const args = redactSecrets(partialEntry.args);
 
-  const withoutHash: AuditEntryWithoutHash = {
-    ...partialEntry,
-    timestamp,
-    args,
-    prevHash,
-  };
+    const withoutHash: AuditEntryWithoutHash = {
+      ...partialEntry,
+      timestamp,
+      args,
+      prevHash,
+    };
 
-  const entryHash = computeEntryHash(withoutHash);
-  const entry: AuditEntry = { ...withoutHash, entryHash };
-  if (opts?.signingKey) {
-    entry.sig = signEntryHash(opts.signingKey, entryHash);
-  }
+    const entryHash = computeEntryHash(withoutHash);
+    const entry: AuditEntry = { ...withoutHash, entryHash };
+    if (opts?.signingKey) {
+      entry.sig = signEntryHash(opts.signingKey, entryHash);
+    }
 
-  await mkdir(dirname(filePath), { recursive: true });
-  await appendFile(filePath, `${JSON.stringify(entry)}\n`, "utf8");
+    await mkdir(dirname(filePath), { recursive: true });
+    await appendFile(filePath, `${JSON.stringify(entry)}\n`, "utf8");
 
-  return entry;
+    return entry;
+  });
 }
 
 /**

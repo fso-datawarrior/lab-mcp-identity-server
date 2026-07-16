@@ -1,5 +1,12 @@
 import { randomUUID } from "node:crypto";
-import { access, mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import {
+  access,
+  mkdir,
+  open,
+  readdir,
+  readFile,
+  writeFile,
+} from "node:fs/promises";
 import { join } from "node:path";
 import {
   getOktaClientMode,
@@ -168,8 +175,35 @@ export async function listPending(dir: string): Promise<PendingRequest[]> {
 }
 
 /**
+ * Atomically claim exclusive resolution of a request (O_EXCL lock file).
+ * Returns true if this caller won the claim; false if another resolver holds it.
+ */
+async function tryClaim(
+  dir: string,
+  requestId: string,
+): Promise<boolean> {
+  await ensureDir(dir);
+  const lockPath = join(dir, requestId + ".lock");
+  try {
+    const handle = await open(lockPath, "wx");
+    await handle.close();
+    return true;
+  } catch (err: unknown) {
+    const code =
+      err && typeof err === "object" && "code" in err
+        ? String((err as { code: unknown }).code)
+        : "";
+    if (code === "EEXIST") {
+      return false;
+    }
+    throw err;
+  }
+}
+
+/**
  * Resolve a pending request out of band. Fail closed on expiry, drift,
- * wrong credential, and already-resolved. Executor runs at most once.
+ * wrong credential, and already-resolved. Executor runs at most once,
+ * including under concurrent resolvers (O_EXCL claim lock) and across a crash.
  *
  * At-most-once across a crash: on approve, after the precondition passes we
  * persist status "approving" BEFORE running the executor. If the process dies
@@ -193,19 +227,40 @@ export async function resolvePending(
     };
   }
 
-  if (isExpired(params.now, request.expiresAt)) {
-    request.status = "expired";
-    await writeRequest(params.dir, request);
-    return { resolved: false, status: "expired", reason: "expired" };
-  }
-
   if (params.approverCredential !== params.expectedCredential) {
     return { resolved: false, reason: "invalid credential" };
   }
 
+  const claimed = await tryClaim(params.dir, params.requestId);
+  if (!claimed) {
+    const again = await getPending(params.dir, params.requestId);
+    return {
+      resolved: false,
+      reason: "already resolved: " + (again?.status ?? "claim-held"),
+    };
+  }
+
+  // Re-read after the exclusive claim so status mutations cannot race.
+  const claimedRequest = await getPending(params.dir, params.requestId);
+  if (claimedRequest === null) {
+    return { resolved: false, reason: "not found" };
+  }
+  if (claimedRequest.status !== "pending") {
+    return {
+      resolved: false,
+      reason: "already resolved: " + claimedRequest.status,
+    };
+  }
+
+  if (isExpired(params.now, claimedRequest.expiresAt)) {
+    claimedRequest.status = "expired";
+    await writeRequest(params.dir, claimedRequest);
+    return { resolved: false, status: "expired", reason: "expired" };
+  }
+
   if (params.decision === "deny") {
-    request.status = "denied";
-    await writeRequest(params.dir, request);
+    claimedRequest.status = "denied";
+    await writeRequest(params.dir, claimedRequest);
     return { resolved: true, status: "denied" };
   }
 
@@ -213,8 +268,8 @@ export async function resolvePending(
   if (params.precondition) {
     const check = await params.precondition();
     if (!check.ok) {
-      request.status = "drift-failed";
-      await writeRequest(params.dir, request);
+      claimedRequest.status = "drift-failed";
+      await writeRequest(params.dir, claimedRequest);
       return {
         resolved: true,
         status: "drift-failed",
@@ -224,13 +279,13 @@ export async function resolvePending(
   }
 
   // Persist "approving" before the side effect so a crash cannot re-execute.
-  request.status = "approving";
-  await writeRequest(params.dir, request);
+  claimedRequest.status = "approving";
+  await writeRequest(params.dir, claimedRequest);
 
   if (params.executor) {
     await params.executor();
   }
-  request.status = "approved";
-  await writeRequest(params.dir, request);
+  claimedRequest.status = "approved";
+  await writeRequest(params.dir, claimedRequest);
   return { resolved: true, status: "approved" };
 }

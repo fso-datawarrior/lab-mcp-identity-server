@@ -122,16 +122,39 @@ export async function resolveApproval(
     };
   }
 
-  const result = await resolvePending({
-    dir: params.dir,
-    requestId: params.requestId,
-    decision: params.decision,
-    approverCredential: params.approverCredential,
-    expectedCredential: params.expectedCredential,
-    now: params.now,
-    precondition,
-    executor,
-  });
+  let result: ResolveResult;
+  try {
+    result = await resolvePending({
+      dir: params.dir,
+      requestId: params.requestId,
+      decision: params.decision,
+      approverCredential: params.approverCredential,
+      expectedCredential: params.expectedCredential,
+      now: params.now,
+      precondition,
+      executor,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    await appendAudit(
+      params.auditPath,
+      {
+        timestamp: params.now,
+        tool: request.tool,
+        tier: 3,
+        actorFingerprint: request.actorFingerprint,
+        principal: request.principal,
+        targetUser: request.targetUser,
+        args: request.args,
+        justification: request.justification,
+        decision: "executor-error",
+        approverCredential: fingerprintCredential(params.approverCredential),
+        oktaSummary: "executor error: " + message,
+      },
+      { now: params.now, signingKey: params.signingKey },
+    );
+    throw err;
+  }
 
   if (result.status && isAuditedDecision(result.status)) {
     const decision: AuditedDecision = result.status;

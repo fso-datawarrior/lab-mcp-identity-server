@@ -171,6 +171,24 @@ export async function handleGrantAccess(
       );
       return { granted: false, reason: "user not found" };
     }
+
+    await appendAudit(
+      deps.auditPath,
+      {
+        timestamp,
+        tool: "grant_access",
+        tier: 2,
+        actorFingerprint: deps.actorFingerprint,
+        principal: deps.principal,
+        targetUser: args.userId,
+        args: groupArgs,
+        justification: args.justification,
+        decision: "denied",
+        approverCredential: null,
+        oktaSummary: "unexpected error: " + message,
+      },
+      auditOpts,
+    );
     throw err;
   }
 }

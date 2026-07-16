@@ -13,7 +13,8 @@ export type AuditEntry = {
     | "approved"
     | "denied"
     | "expired"
-    | "drift-failed";
+    | "drift-failed"
+    | "executor-error";
   approverCredential: string | null;
   oktaSummary: string | null;
   prevHash: string;

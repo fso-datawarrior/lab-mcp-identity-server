@@ -95,6 +95,7 @@ export function hasRealOktaCredentials(): boolean {
     !!process.env.OKTA_OAUTH_CLIENT_ID?.trim() &&
     !!process.env.OKTA_OAUTH_PRIVATE_KEY_PATH?.trim() &&
     !!process.env.OKTA_SCOPES?.trim() &&
-    !!process.env.OKTA_DEMO_GROUP_ID?.trim()
+    !!process.env.OKTA_DEMO_GROUP_ID?.trim() &&
+    !!process.env.LAB3_DEMO_PREFIX?.trim()
   );
 }

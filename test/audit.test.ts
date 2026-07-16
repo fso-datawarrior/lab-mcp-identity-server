@@ -213,4 +213,24 @@ describe("audit", () => {
     expect(result.brokenAtLine).toBe(1);
     expect(result.reason).toBe("missing signature");
   });
+
+  it("concurrent Promise.all appends keep a valid chain of length N", async () => {
+    const n = 8;
+    await Promise.all(
+      Array.from({ length: n }, (_, i) =>
+        appendAudit(
+          logPath,
+          basePartial({
+            timestamp: `2026-01-01T00:00:0${i}.000Z`,
+            targetUser: `user-${i}`,
+          }),
+        ),
+      ),
+    );
+
+    const content = await readFile(logPath, "utf8");
+    const lines = content.split("\n").filter((line) => line.length > 0);
+    expect(lines).toHaveLength(n);
+    expect(await verifyChain(logPath)).toEqual({ ok: true });
+  });
 });
