@@ -7,7 +7,7 @@
 
 ## Context
 
-The M4-c milestone ran the two-lab cascade live: an approved `revoke_access` in Lab 3 drove an Okta group removal, and Okta pushed a SCIM `PATCH active:false` into Lab 1 (about 2.9 seconds), deprovisioning the user. The offline correlator `pnpm cascade:timeline` stitches both audit logs into one latency-annotated timeline as the milestone artifact.
+The M4-c milestone ran the two-lab cascade live: an approved `revoke_access` in Lab 3 drove an Okta group removal, and Okta pushed a SCIM `PATCH active:false` into Lab 1 (about 2.9 seconds at M4-c; a later confirmatory run measured about 2.8 seconds), deprovisioning the user. The offline correlator `pnpm cascade:timeline` stitches both audit logs into one latency-annotated timeline as the milestone artifact.
 
 It reported "no downstream deprovision found." Root cause: Lab 1's audit writer (`summarizeRequest` in `src/audit.ts`) recorded each SCIM PATCH operation as only `{ op }`, dropping `path` and `value`. Okta sends the deprovision as the object-form operation `{ "op": "replace", "value": { "active": false } }`, so the logged line became `{"op":"replace"}` and the deactivation was invisible in the audit. The Lab 3 correlator, which correctly requires `active:false` to confirm a deprovision, could never match it. This is tracked as AD-17 in the assumption ledger. The unit-test fixtures had encoded a richer operation than the runtime emitted, so the harness passed in development and failed closed against the real log.
 
@@ -27,7 +27,7 @@ Positive: future live cascades produce self-evidencing deprovision events; the c
 
 ## References / Follow-On
 
-- Implementation: Lab 1 root-cause fix, `summarizeRequest` records `{ op, path, value }` (branch feat/audit-full-patch-op, f3006a0, merged to master 4144d81); Lab 3 correlator fallback (branch feat/m4-cascade-harness, 1ec9160, merged to main 6d673ee).
+- Implementation: Lab 1 root-cause fix, `summarizeRequest` records `{ op, path, value }` (Lab 1 branch feat/audit-full-patch-op, f3006a0, merged to Lab 1 master 4144d81); Lab 3 correlator fallback (branch feat/m4-cascade-harness, 1ec9160, merged to main 6d673ee).
 - Live evidence: the M4-c two-lab cascade run, ~2.9s deprovision latency (Lab3-M4c-Cascade-Timeline-Record-2026-07-13.md in the project workspace).
 - Ledger: AD-17 (correlator false-negative), AD-2 (deletion-evidence family), section D convention-vs-mechanism thesis.
 - Relates to ADR-0001 (approval channel) and ADR-0003 (audit-log deletion-evidence).

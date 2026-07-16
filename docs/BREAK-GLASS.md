@@ -5,7 +5,7 @@
 ## Server in a bad state
 
 1. **Stop the server:** terminate the running MCP process (Ctrl+C in the terminal, or quit/restart Claude Desktop if the server is launched from Desktop).
-2. **Confirm mode:** ensure `.env` has `OKTA_CLIENT_MODE=real` for a live demo (the Desktop launcher also sets this).
+2. **Confirm mode:** ensure `.env` has `OKTA_CLIENT_MODE=real` for a live demo (the launcher defaults to real only if `.env` leaves it unset).
 3. **Relaunch:**
    - **Local:** `pnpm build` then `pnpm start:real`
    - **Claude Desktop:** restart Desktop with `scripts/start-desktop.mjs` registered in the MCP config (pins cwd to the repo root for the shared pending store). See [DEMO-RUNBOOK.md](./DEMO-RUNBOOK.md) section 1.
@@ -43,6 +43,16 @@ node --env-file=.env --input-type=module -e "const { readFile } = await import('
 ```
 
 **Expected:** `{ "ok": true }`
+
+That form derives `count`/`head` from the same file, so it re-checks in-chain integrity (edits, reorders) but not truncation or deletion, which would defeat ADR-0003. For genuine deletion-evidence, record the anchor at capture time to a separate file and verify against it:
+
+```bash
+node --input-type=module -e "const fs=await import('node:fs/promises');const c=await fs.readFile('data/audit.jsonl','utf8');const L=c.split(String.fromCharCode(10)).filter(x=>x.length>0);const h=JSON.parse(L[L.length-1]);await fs.writeFile('audit-anchor.json',JSON.stringify({count:L.length,headEntryHash:h.entryHash,headSig:h.sig}));console.log('anchor saved',L.length);"
+# later, verify the (possibly tampered) log against the saved anchor:
+node --env-file=.env --input-type=module -e "const fs=await import('node:fs/promises');const {verifyChain}=await import('./dist/audit/log.js');const a=JSON.parse(await fs.readFile('audit-anchor.json','utf8'));console.log(JSON.stringify(await verifyChain('data/audit.jsonl',{signingKey:process.env.LAB3_AUDIT_HMAC_KEY,expected:a})));"
+```
+
+A truncated, emptied, or shortened log then fails closed, because the saved anchor disagrees.
 
 ## Restore the demo fixture
 

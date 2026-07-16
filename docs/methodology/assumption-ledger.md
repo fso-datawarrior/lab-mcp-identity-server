@@ -58,6 +58,8 @@ Each entry: the assumption as first held, why it was believed, the break point, 
 - **AD-8: The server did not need to authenticate its caller.** The design authenticated the server to the directory but never the caller to the server. The audit `principal` is a configured label, not an authenticated identity; a production version would bind it to a real authenticated caller (on-behalf-of token exchange).
 - **AD-9: The audit trail only needed the mechanical action.** It captured *what* happened but not *why* the AI wanted it, the one field that distinguishes a sound request from an injection-driven one. A required `justification` was added. **Adversarial testing (Probe A) then found** the schema accepted an empty or whitespace-only justification, and it was closed the same session with `z.string().trim().min(1)` (`6de9ad7` → `1ec3f5c`). "Justification required" had been satisfiable by a single space: the thesis in one line.
 - **AD-10: Naming the governance principles was enough to embody them.** "Fail closed" and "no self-permissioning" were asserted in prose while the design broke both. The interceptor now denies and audits any call whose tier cannot be positively determined, and the out-of-band gate makes no-self-permissioning true by construction.
+- **AD-11: The lab could publish having tested only part of the way.** For a server performing destructive live identity operations, deferring the gate-bypass pentest was the wrong call. A go-appsec-method pentest was run (Probes A, B, and C); the honest claim is partially pentested with the gaps named.
+- **AD-12: A stranger could clone the repo and try it just by its being public.** Running it required an Okta org, a service app, a seed, and for the full chain a second lab and a tunnel. Closed with a sample environment file, a seed script, and a mock mode; 108 zero-credential tests; break-glass and checklist docs.
 
 ### AD-13: Group identifiers are one kind of string, and the dev-vs-runtime seam family
 
@@ -80,7 +82,7 @@ Each entry: the assumption as first held, why it was believed, the break point, 
 
 - **Break point:** The break-glass exercise. Setting mock mode in `.env` and restarting the desktop client left the server in real mode.
 - **Why it did not hold:** The desktop launcher hard-codes `process.env.OKTA_CLIENT_MODE = "real"` before importing the server, overriding `.env`. So on the desktop path the documented kill-switch is a no-op; it works only for the local start path. The convention-vs-mechanism shape appearing in the recovery runbook itself.
-- **Revised recommendation:** Note the launcher override in the runbook, or make the launcher honor `.env` (`process.env.OKTA_CLIENT_MODE ??= "real"`). Fails safe (defaults to real for a live demo).
+- **Revised design (closed 2026-07-16):** The launcher now defaults the mode to real only when unset (`process.env.OKTA_CLIENT_MODE ??= "real"`), and the desktop config no longer pins it, so the documented kill-switch (set `mock` in `.env` and restart) works on the desktop path. Fails safe (defaults to real for a live demo).
 
 ---
 

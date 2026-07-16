@@ -108,7 +108,7 @@ pnpm approve <requestId>
 pnpm smoke:okta
 ```
 
-Step 2 should FAIL (alice no longer in demo group) until Beat 6 restores her.
+Step 2 should FAIL (alice no longer in demo group) until Beat 5 restores her.
 
 **Screenshot:** Terminal approve output; smoke step 2 failure or Okta UI showing removal.
 
@@ -171,6 +171,13 @@ All 5 steps should PASS.
 
    **Expected:** `{ "ok": true }`
 
+   Deletion-evidence (ADR-0003) only holds when `count`/`head` come from OUTSIDE the file under verify. Deriving them from the same file (as above) re-checks in-chain integrity only, not truncation. For genuine deletion-evidence, save the anchor at capture time and verify against it:
+
+   ```bash
+   node --input-type=module -e "const fs=await import('node:fs/promises');const c=await fs.readFile('data/audit.jsonl','utf8');const L=c.split(String.fromCharCode(10)).filter(x=>x.length>0);const h=JSON.parse(L[L.length-1]);await fs.writeFile('audit-anchor.json',JSON.stringify({count:L.length,headEntryHash:h.entryHash,headSig:h.sig}));console.log('anchor saved',L.length);"
+   node --env-file=.env --input-type=module -e "const fs=await import('node:fs/promises');const {verifyChain}=await import('./dist/audit/log.js');const a=JSON.parse(await fs.readFile('audit-anchor.json','utf8'));console.log(JSON.stringify(await verifyChain('data/audit.jsonl',{signingKey:process.env.LAB3_AUDIT_HMAC_KEY,expected:a})));"
+   ```
+
 3. **Screenshots to capture:**
    - Beat 1: Claude `get_user` result
    - Beat 2: Pending revoke + proof of continued membership
@@ -191,6 +198,6 @@ rm -f data/pending/*.json
 
 Do not truncate `data/audit.jsonl` if you need evidence; copy it first. The audit log is append-only by design.
 
-**Restore fixture if interrupted:** If approve ran but grant restore did not, re-run Beat 6 or `pnpm seed:demo` (idempotent) then `pnpm smoke:okta`.
+**Restore fixture if interrupted:** If approve ran but grant restore did not, re-run Beat 5 or `pnpm seed:demo` (idempotent) then `pnpm smoke:okta`.
 
 **Okta eventual consistency:** Group membership reads can lag writes; `pnpm smoke:okta` retries membership checks and self-heals bob if a prior run left residue.
