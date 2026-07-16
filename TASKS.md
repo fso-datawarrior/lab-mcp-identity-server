@@ -45,3 +45,4 @@
 - [x] **L3-AD-18** AD-18 opened and characterized 2026-07-16: Okta Node SDK omits display-name field on the live read path (sixth dev-vs-runtime seam; fails closed)
 - [x] **L3-AD-19** AD-19 closed 2026-07-16: desktop launcher honors .env OKTA_CLIENT_MODE (bd30939, merged 7ad3b36)
 - [x] **L3-HARDEN-01** Concurrency hardening (AD-20 appendAudit per-path mutex; AD-21 resolvePending O_EXCL single-use claim; hasRealOktaCredentials + LAB3_DEMO_PREFIX; executor-error audit-and-rethrow; sanitize widened bidi/LS/PS/WJ). feat/concurrency-hardening f115c0a -> merged 9d2b9f5. Suite 108 -> 115.
+- [x] **L3-REVIEW-01** Two-agent pre-publication review 2026-07-16 (articles -> GitHub): found PENTEST-FINDINGS/AD-18 contradiction, AD-19 runbook residue, em dashes, mislabeled commit; all fixed. Record: Lab3-Prepublication-Review-2026-07-16.
