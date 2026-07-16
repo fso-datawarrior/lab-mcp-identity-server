@@ -154,4 +154,25 @@ describe("m2 provision_user and grant_access", () => {
     expect(lines[0].decision).toBe("denied");
     expect(lines[0].oktaSummary).toBe("user not found");
   });
+
+  it("grant_access audits and rethrows unmapped Okta errors", async () => {
+    const deps = makeDeps();
+    deps.client.addUserToGroup = async () => {
+      throw new Error("okta 502");
+    };
+
+    await expect(
+      handleGrantAccess(deps, {
+        userId: "user-bob",
+        group: "Engineering",
+        justification: "project access",
+      }),
+    ).rejects.toThrow("okta 502");
+
+    const lines = await readAuditLines();
+    expect(lines).toHaveLength(1);
+    expect(lines[0].decision).toBe("denied");
+    expect(lines[0].oktaSummary).toMatch(/unexpected error: okta 502/);
+    expect(await verifyChain(auditPath)).toEqual({ ok: true });
+  });
 });

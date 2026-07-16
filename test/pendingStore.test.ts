@@ -266,6 +266,35 @@ describe("pendingStore", () => {
     expect((await getPending(dir, created.requestId))?.status).toBe("approved");
   });
 
+  it("parallel approves of one requestId run the executor at most once", async () => {
+    const created = await createPending(dir, baseInput, {
+      now: "2026-03-01T00:00:00.000Z",
+    });
+    let calls = 0;
+
+    const results = await Promise.all(
+      [0, 1, 2].map(() =>
+        resolvePending({
+          dir,
+          requestId: created.requestId,
+          decision: "approve",
+          approverCredential: EXPECTED,
+          expectedCredential: EXPECTED,
+          now: "2026-03-01T00:01:00.000Z",
+          executor: async () => {
+            calls += 1;
+            await new Promise((r) => setTimeout(r, 30));
+          },
+        }),
+      ),
+    );
+
+    const approved = results.filter((r) => r.status === "approved");
+    expect(approved).toHaveLength(1);
+    expect(calls).toBe(1);
+    expect((await getPending(dir, created.requestId))?.status).toBe("approved");
+  });
+
   it("executor throw leaves approving limbo and blocks re-execution", async () => {
     const created = await createPending(dir, baseInput, {
       now: "2026-03-01T00:00:00.000Z",

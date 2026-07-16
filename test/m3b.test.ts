@@ -269,4 +269,42 @@ describe("m3b out-of-band approval gate", () => {
       expect(REGISTERED_TOOL_NAMES).not.toContain(forbidden);
     }
   });
+
+  it("executor throw is audited (not a silent gap) and leaves approving limbo", async () => {
+    const client = makeClient();
+    const deps = toolDeps(client);
+    const created = await handleRevokeAccess(deps, {
+      userId: "user-alice",
+      group: "Engineering",
+      justification: "offboard project",
+    });
+
+    client.removeUserFromGroup = async () => {
+      throw new Error("okta 502");
+    };
+
+    await expect(
+      resolveApproval({
+        dir: pendingDir,
+        auditPath,
+        requestId: created.requestId,
+        decision: "approve",
+        approverCredential: SECRET,
+        expectedCredential: SECRET,
+        now: "2026-03-15T00:01:00.000Z",
+        client,
+      }),
+    ).rejects.toThrow("okta 502");
+
+    expect((await getPending(pendingDir, created.requestId))?.status).toBe(
+      "approving",
+    );
+
+    const lines = await readAudit();
+    const errorLine = lines.find((l) => l.decision === "executor-error");
+    expect(errorLine).toBeDefined();
+    expect(errorLine?.approverCredential).toBe(fingerprintCredential(SECRET));
+    expect(errorLine?.oktaSummary).toMatch(/okta 502/i);
+    expect(await verifyChain(auditPath)).toEqual({ ok: true });
+  });
 });

@@ -94,4 +94,11 @@ describe("get_user", () => {
     expect(cleaned.length).toBe(10);
     expect(cleaned.startsWith("ABCD")).toBe(true);
   });
+
+  it("sanitizeUntrusted strips bidi overrides, line/paragraph separators, and word joiner", () => {
+    const dirty = "safe\u202Eevil\u202C\u2028\u2029\u2060tail";
+    const cleaned = sanitizeUntrusted(dirty);
+    expect(cleaned).not.toMatch(/[\u202A-\u202E\u2028\u2029\u2060]/);
+    expect(cleaned).toBe("safeeviltail");
+  });
 });
