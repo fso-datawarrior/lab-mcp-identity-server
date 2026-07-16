@@ -16,7 +16,7 @@ The live demo uses an OAuth private-key-JWT **service app** (`lab3-mcp-identity`
 
 - **Rotate:** issue a new key in the service app, update `OKTA_OAUTH_PRIVATE_KEY_PATH` (and `OKTA_OAUTH_KEY_ID` if applicable) in `.env`, restart the server.
 - **Deactivate:** deactivate the service app in Okta Admin to invalidate the credential immediately.
-- **Fast kill-switch:** set `OKTA_CLIENT_MODE=mock` in `.env` and restart — all live Okta API calls are disabled immediately (mock in-memory client only).
+- **Fast kill-switch:** set `OKTA_CLIENT_MODE=mock` in `.env` and restart, all live Okta API calls are disabled immediately (mock in-memory client only). The desktop launcher now honors `OKTA_CLIENT_MODE` from `.env` (previously it hard-coded `"real"`), so setting mock in `.env` and restarting engages the kill-switch on the desktop path as documented.
 
 Required env vars for real mode: `OKTA_ORG_URL`, `OKTA_OAUTH_CLIENT_ID`, `OKTA_OAUTH_PRIVATE_KEY_PATH`, `OKTA_SCOPES`, `OKTA_DEMO_GROUP_ID`, `LAB3_DEMO_PREFIX`, `OKTA_CLIENT_MODE=real`.
 
@@ -28,7 +28,7 @@ Demo pending files only (safe to delete):
 rm -f data/pending/*.json
 ```
 
-Never truncate `data/audit.jsonl` — it is append-only. Copy it first if you need evidence:
+Never truncate `data/audit.jsonl`, it is append-only. Copy it first if you need evidence:
 
 ```bash
 cp data/audit.jsonl demo-audit-$(date +%Y%m%d).jsonl
