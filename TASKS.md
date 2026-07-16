@@ -1,7 +1,7 @@
 # TASKS.md
 
 > Note: this file may be normalized later by the PMO task template. Task IDs below are stable for now.
-> M4-c seams: AD-16 (cloudflared config.yml catch-all — resolved operationally) and AD-17 (correlator false-negative on lossy Lab 1 log — code-closed both sides). AD-14 code-closed (L3-M4-04).
+> M4-c seams: AD-16 (cloudflared config.yml catch-all, resolved operationally) and AD-17 (correlator false-negative on lossy Lab 1 log, code-closed both sides). AD-14 code-closed (L3-M4-04).
 
 ## Next (M2)
 
@@ -11,7 +11,7 @@
 - [ ] **L3-M5-02** go-appsec pentest
   - Probe A (offline gate-bypass suite) merged via feat/m5-pentest-gate-bypass: 12 adversarial tests, 11 HELD; 1 GAP found (AD-9 blank/whitespace justification) now CLOSED via feat/m5-ad9-justification-nonempty (REQUIRED_JUSTIFICATION, non-empty trimmed). docs/PENTEST-FINDINGS.md.
   - Probe B (offline audit-integrity suite) merged via feat/m5-pentest-audit-integrity: 10 adversarial tests, 7 HELD / 3 GAP (AD-2 deletion-evidence: tail-truncation, empty file, absent file verify ok). docs/PENTEST-FINDINGS.md. AD-2 gaps closed when `expected` supplied (L3-M5-04 / ADR-0003).
-  - Probe C fully done (extended mock suite + live carol verification): feat/m5-pentest-injection-boundary — 6 mock adversarial tests (AD-3) + live single-user verification 2026-07-14 vs Integrator org (carol). docs/PENTEST-FINDINGS.md.
+  - Probe C fully done (extended mock suite + live carol verification): feat/m5-pentest-injection-boundary, 6 mock adversarial tests (AD-3) + live single-user verification 2026-07-14 vs Integrator org (carol). docs/PENTEST-FINDINGS.md.
 
 ## Done
 
@@ -39,3 +39,8 @@
 - [x] **L3-M5-04** AD-2 deletion-evidence closed via ADR-0003 verify-time assertion (feat/m5-ad2-deletion-evidence): optional `expected{count,headEntryHash,headSig}` on `verifyChain`; Probe B gap cases closed when supplied; backward compatible without `expected`.
 - [x] **L3-M5-03** BREAK-GLASS + MCP-SERVER-CHECKLIST + asqav self-score (feat/m5-honest-scoring-docs): docs/BREAK-GLASS.md, docs/MCP-SERVER-CHECKLIST.md, README asqav table (5 categories scored); README milestone corrected to M5.
 - [x] **L3-P-01** Physical ADR/0002 record added (SCIM audit-event fidelity); on-disk ADR sequence 0001/0002/0003 now complete
+- [x] **L3-DEMO-final** Consolidated final-results live run (Acts 1-6) complete 2026-07-16 against real org: one hash-chained audit log, fixture self-restored (smoke:okta 5/5), 108 tests unchanged
+- [x] **L3-DOCS-01** Whitepaper (docs/whitepaper/), curated methodology (docs/methodology/), infographics (docs/assets/), and landing README published (06f7247)
+- [x] **L3-M4-05** AD-17 confirmed end to end 2026-07-16: two-system SCIM cascade, automatic no-caveat scim-id match, 2.8s
+- [x] **L3-AD-18** AD-18 opened and characterized 2026-07-16: Okta Node SDK omits display-name field on the live read path (sixth dev-vs-runtime seam; fails closed)
+- [x] **L3-AD-19** AD-19 closed 2026-07-16: desktop launcher honors .env OKTA_CLIENT_MODE (bd30939, merged 7ad3b36)
