@@ -15,7 +15,7 @@ runbooks are flat under docs/. Preserve any accurate existing badge/link on past
 </p>
 
 <p align="center">
-  <img alt="tests" src="https://img.shields.io/badge/tests-108%20passing-brightgreen">
+  <img alt="tests" src="https://img.shields.io/badge/tests-115%20passing-brightgreen">
   <img alt="zero credentials" src="https://img.shields.io/badge/run%20the%20suite-zero%20credentials-blue">
   <img alt="pentested" src="https://img.shields.io/badge/pentested-3%20probes-8b5cf6">
   <img alt="node" src="https://img.shields.io/badge/node-22.x-339933">
@@ -38,7 +38,7 @@ runbooks are flat under docs/. Preserve any accurate existing badge/link on past
 - An AI assistant is given **five tools** that operate a **real Okta directory**: look up, create, grant, revoke, deactivate.
 - The **destructive** tools (revoke, deactivate) cannot execute in the model's turn. They write a durable pending request and stop. Release happens on a **separate local channel, behind a secret the model never sees**. There is **no approve, confirm, or resolve tool** anywhere on the model's surface, and a test fails the build if one ever appears.
 - The design was built to make one bounded claim **true by construction**, then **attacked on purpose** (three adversarial probes) to see whether the claim held.
-- The whole **108-test suite runs with zero credentials**, so you can clone it and inspect the exact seam where the destructive branch stops, without an Okta account.
+- The whole **115-test suite runs with zero credentials** (108 at publish, then 115 after concurrency hardening), so you can clone it and inspect the exact seam where the destructive branch stops, without an Okta account.
 
 > **The claim.** For the five enumerated identity tools, even a fully compromised model cannot execute a destructive action alone, because the control lives in the server and the out-of-band approval channel and not in the model's behavior. This holds while the server and that channel are uncompromised and the approver cannot be spoofed. The model can still be hijacked, and can still make the call. **The gate constrains the outcome, not the model.**
 
@@ -101,7 +101,7 @@ Tier is a function of the **target**, not the verb: a grant into an ordinary gro
 git clone https://github.com/fso-datawarrior/lab-mcp-identity-server
 cd lab-mcp-identity-server
 pnpm install
-pnpm test        # 108 tests, all green, no Okta account required
+pnpm test        # 115 tests, all green, no Okta account required
 ```
 
 The whole suite runs against an in-memory mock directory, so a stranger can clone it, inspect the exact seam where the destructive branch stops, and run every test without any secret. That zero-credential path is a first-class property of the design: a control a stranger cannot inspect and exercise is a control a stranger has no reason to trust.
@@ -144,7 +144,7 @@ One approved revoke removes an Okta group membership and, about **2.8 seconds** 
 The most transferable thing here is not the server, it is the pipeline that produced it. Three curated records tell that story:
 
 - [**Assumption and Discovery Ledger**](docs/methodology/assumption-ledger.md), every design assumption the build walked in with, the point it broke, and what the design does instead. The reversals are the primary finding.
-- [**Build Evidence**](docs/methodology/build-evidence.md), what the code actually proved, milestone by milestone, with the monotonic test spine (7 to 108) and commit hashes.
+- [**Build Evidence**](docs/methodology/build-evidence.md), what the code actually proved, milestone by milestone, with the monotonic test spine (7 to 115) and commit hashes.
 - [**Prompt Archive**](docs/methodology/prompt-archive.md), how the build was driven, the one-unit-of-work-with-acceptance-criteria loop, and two representative verbatim prompts.
 
 The portable heuristic: **put the control where the constrained thing cannot reach it, then try to break it from the outside.**
@@ -160,7 +160,7 @@ The portable heuristic: **put the control where the constrained thing cannot rea
 | [`docs/BREAK-GLASS.md`](docs/BREAK-GLASS.md) | Recovery runbook (kill-switch, restore) |
 | [`docs/MCP-SERVER-CHECKLIST.md`](docs/MCP-SERVER-CHECKLIST.md) | Live-demo go/no-go |
 | [`src/`](src) | The server, the out-of-band approver, the audit chain, the Okta clients |
-| [`test/`](test), [`tests/`](tests) | The 108-case zero-credential suite |
+| [`test/`](test), [`tests/`](tests) | The 115-case zero-credential suite |
 
 ## 🧪 Try to break it
 

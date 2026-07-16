@@ -7,10 +7,10 @@ The whole test suite runs with **zero credentials** in mock mode, so any of the 
 ## The test spine (monotonic, one increment per validated task)
 
 ```
-7 → 11 → 16 → 24 → 31 → 37 → 41 → 48 → 50 → 51 → 54 → 57 → 66 → 74 → 86 → 96 → 102 → 108
+7 → 11 → 16 → 24 → 31 → 37 → 41 → 48 → 50 → 51 → 54 → 57 → 66 → 74 → 86 → 96 → 102 → 108 → 115
 ```
 
-Each step is a task with explicit acceptance criteria that passed on first validation, cross-checked against what was actually on disk rather than against the implementer's own summary. Through the whole build there were zero failed validations, zero rework loops, and zero reverts on an executed task.
+Each step is a task with explicit acceptance criteria that passed on first validation, cross-checked against what was actually on disk rather than against the implementer's own summary. Through the whole build there were zero failed validations, zero rework loops, and zero reverts on an executed task. The final step (108 → 115) is the concurrency-hardening suite (serialized `appendAudit`, atomic approve claim, and related regression tests).
 
 ## What each milestone proved
 
